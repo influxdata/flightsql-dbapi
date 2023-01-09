@@ -8,6 +8,7 @@ build:
 
 .PHONY: clean
 clean:
+	rm -rf dist
 	rm -rf venv
 	rm -rf __pycache__
 
