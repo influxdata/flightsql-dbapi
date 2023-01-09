@@ -107,49 +107,49 @@ class ReadOnlyDialect(FlightSQLDialect):
 
     statement_compiler = ReadOnlyCompiler
 
-    # # TODO(brett): Remove this when we're ready to remove
-    # # `information_schema` usage.
-    # def get_columns(self, connection, table, schema=None, **kwargs):
-    #     sql = 'show columns from "{}"'.format(table)
-    #     if schema is not None and schema != "":
-    #         sql = 'show columns from "{}"."{}"'.format(schema, table)
+    # TODO(brett): Remove this when we're ready to remove
+    # `information_schema` usage.
+    def get_columns(self, connection, table, schema=None, **kwargs):
+        sql = 'show columns from "{}"'.format(table)
+        if schema is not None and schema != "":
+            sql = 'show columns from "{}"."{}"'.format(schema, table)
 
-    #     cursor = connection.execute(sql)
-    #     result = []
-    #     for (
-    #         table_catalog,
-    #         table_schema,
-    #         table_name,
-    #         column_name,
-    #         data_type,
-    #         is_nullable
-    #     ) in cursor:
-    #         result.append({
-    #             "name": column_name,
-    #             "type": resolve_sql_type(data_type.lower()),
-    #             "default": None,
-    #             "comment": None,
-    #             "nullable": is_nullable == "YES"
-    #         })
+        cursor = connection.execute(sql)
+        result = []
+        for (
+            table_catalog,
+            table_schema,
+            table_name,
+            column_name,
+            data_type,
+            is_nullable
+        ) in cursor:
+            result.append({
+                "name": column_name,
+                "type": resolve_sql_type(data_type.lower()),
+                "default": None,
+                "comment": None,
+                "nullable": is_nullable == "YES"
+            })
 
-    #     return (result)
+        return (result)
 
-    # # TODO(brett): Remove this when we're ready to remove
-    # # `information_schema` usage.
-    # @reflection.cache
-    # def get_table_names(self, connection, schema=None, **kwargs):
-    #     sql = 'select table_name from information_schema.tables'
-    #     if schema is not None:
-    #         sql = f"select table_name from information_schema.tables where table_schema = '{schema}'"
-    #     result = connection.execute(sql)
-    #     return [r[0] for r in result]
+    # TODO(brett): Remove this when we're ready to remove
+    # `information_schema` usage.
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kwargs):
+        sql = 'select table_name from information_schema.tables'
+        if schema is not None:
+            sql = f"select table_name from information_schema.tables where table_schema = '{schema}'"
+        result = connection.execute(sql)
+        return [r[0] for r in result]
 
-    # # TODO(brett): Remove this when we're ready to remove
-    # # `information_schema` usage.
-    # @reflection.cache
-    # def get_schema_names(self, connection, **kwargs):
-    #     result = connection.execute("select distinct table_schema from information_schema.tables")
-    #     return [r[0] for r in result]
+    # TODO(brett): Remove this when we're ready to remove
+    # `information_schema` usage.
+    @reflection.cache
+    def get_schema_names(self, connection, **kwargs):
+        result = connection.execute("select distinct table_schema from information_schema.tables")
+        return [r[0] for r in result]
 
 # This dictionary maps a string representation of a type, as returned by
 # DataFusion in information_schema lookups, into a SQL type.
