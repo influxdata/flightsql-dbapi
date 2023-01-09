@@ -72,7 +72,7 @@ class FlightSQLDialect(default.DefaultDialect):
     def get_view_names(self, connection, schema=None, **kwargs):
         return []
 
-class ReadOnlyCompiler(compiler.SQLCompiler):
+class DataFusionCompiler(compiler.SQLCompiler):
     # Force bind parameters to be replaced by their underlying value. IOx
     # doesn't support prepared statements so we'll need to do perform literal
     # binding of the parameters. This should *not* be considered safe.
@@ -80,18 +80,18 @@ class ReadOnlyCompiler(compiler.SQLCompiler):
     def visit_bindparam(self, bindparam, within_columns_clause=False, literal_binds=False, **kwargs):
         return self.render_literal_bindparam(bindparam, bindparam.value)
 
-class ReadOnlyDialect(FlightSQLDialect):
+class DataFusionDialect(FlightSQLDialect):
     """
-    ReadOnlyDialect is a SQLAlchemy Dialect for interacting with a basic Flight
-    SQL front-end in a read-only fashion.
+    DataFusionDialect is a SQLAlchemy Dialect that uses Flight SQL as its
+    transport layer and for metadata lookups.
 
     This Dialect is currently using `information_schema` via ad-hoc queries to answer
-    metadata questions. In this state ReadOnlyDialect is only useful against SQL
+    metadata questions. In this state DataFusionDialect is only useful against SQL
     engine's that support `infromation_schema`. This behavior will be swapped
     out for correct Flight SQL metadata calls when we have them working (see TODOs).
     """
 
-    name = "readonly"
+    name = "datafusion"
 
     paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
@@ -105,7 +105,7 @@ class ReadOnlyDialect(FlightSQLDialect):
     supports_unicode_binds = True
     supports_unicode_statements = True
 
-    statement_compiler = ReadOnlyCompiler
+    statement_compiler = DataFusionCompiler
 
     # TODO(brett): Remove this when we're ready to remove
     # `information_schema` usage.
@@ -206,4 +206,4 @@ def resolve_sql_type(t: str) -> Any:
         return types.TIMESTAMP
     return arrow_type_strings[t]
 
-registry.register("readonly.flightsql", "flightsql.sqlalchemy", "ReadOnlyDialect")
+registry.register("datafusion.flightsql", "flightsql.sqlalchemy", "DataFusionDialect")

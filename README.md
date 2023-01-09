@@ -6,8 +6,12 @@ and [SQLAlchemy](https://www.sqlalchemy.org) Dialect for [Flight
 SQL](https://arrow.apache.org/docs/format/FlightSql.html).
 
 Initially, this library aims to ease the process of connecting to Flight SQL
-APIs in [Apache Superset](https://superset.apache.org). The SQLAlchemy Dialect
-is read-only for now, but should expand its capabilities as time progresses.
+APIs in [Apache Superset](https://superset.apache.org). 
+
+The primary SQLAlchemy Dialect provided by `flightsql-dbapi` targets the
+[DataFusion](https://arrow.apache.org/datafusion) SQL execution engine. However,
+there extension points to create custom dialects using Flight SQL as a transport
+layer and for metadata discovery.
 
 ## Usage
 
@@ -32,7 +36,7 @@ from sqlalchemy import func, select
 from sqlalchemy.engine import create_engine
 from sqlalchemy.schema import MetaData, Table
 
-engine = create_engine("readonly+flightsql://john:appleseeds@upstream.server.dev:443")
+engine = create_engine("datafusion+flightsql://john:appleseeds@upstream.server.dev:443")
 runs = Table("runs", MetaData(bind=engine), autoload=True)
 count = select([func.count("*")], from_obj=runs).scalar()
 print("runs count:" count)
@@ -57,6 +61,7 @@ from sqlalchemy.dialects import registry
 class CustomDialect(FlightSQLDialect):
     name = "custom"
     paramstyle = 'named'
+
     # For more information about what's available to override, visit:
     # https://docs.sqlalchemy.org/en/14/core/internals.html#sqlalchemy.engine.default.DefaultDialect
 
@@ -76,7 +81,7 @@ Both [Basic and Bearer Authentication](https://arrow.apache.org/docs/format/Flig
 To authenticate using Basic Authentication, supply a DSN as follows:
 
 ```
-readonly+flightsql://user:password@host:443
+datafusion+flightsql://user:password@host:443
 ```
 
 A handshake will be performed with the upstream server to obtain a Bearer token.
@@ -86,7 +91,7 @@ To authenticate using Bearer Authentication directly, supply a `token` query par
 instead:
 
 ```
-readonly+flightsql://host:443?token=TOKEN
+datafusion+flightsql://host:443?token=TOKEN
 ```
 
 The token will be placed in an appropriate `Authentication: Bearer ...` HTTP header.

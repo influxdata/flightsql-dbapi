@@ -43,7 +43,7 @@ dev = [
 "Homepage" = "https://github.com/brettbuddin/flightsql-dbapi"
 
 [project.entry-points."sqlalchemy.dialects"]
-readonly = 'flightsql.sqlalchemy:ReadOnlyDialect'
+datafusion = 'flightsql.sqlalchemy:DataFusionDialect'
 
 [tool.flake8]
 statistics = true
