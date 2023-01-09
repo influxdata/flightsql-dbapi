@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flightsql-dbapi"
+version = "0.0.1"
+authors = [
+  { name="Brett Buddin", email="brett@buddin.org" },
+]
+description = "DB API 2 and SQLAlchemy adapter for Flight SQL"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+	"License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    'sqlalchemy>=1.4.0',
+    'pyarrow>=5.0.0',
+    'protobuf>=4.21.0'
+]
+
+[project.optional-dependencies]
+test = [
+	'pandas',
+	'pytest',
+	'pytest-cov[all]'
+]
+lint = [
+	'mypy',
+	'types-protobuf',
+	'flake8',
+	'pyproject-flake8'
+]
+dev = [
+	"flightsql-dbapi[test,lint]"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/brettbuddin/flightsql-dbapi"
+
+[project.entry-points."sqlalchemy.dialects"]
+readonly = 'flightsql.sqlalchemy:ReadOnlyDialect'
+
+[tool.flake8]
+statistics = true
+exit-zero = true
+max-line-length = 127 
+max-complexity = 15
+extend-ignore = ["E701", "E302", "E305"]
+exclude = """
+	.git
+	__pycache__
+	flightsql/*_pb2.py
+	build
+	dist
+	venv
+	test.py
+"""
