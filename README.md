@@ -1,3 +1,6 @@
+:warning: This library is experimental and under active development. The APIs it
+provides could change at any time so use at your own risk.
+
 This library provides a [DB API 2](https://peps.python.org/pep-0249/) interface
 and [SQLAlchemy](https://www.sqlalchemy.org) Dialect for [Flight
 SQL](https://arrow.apache.org/docs/format/FlightSql.html).
