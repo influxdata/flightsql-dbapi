@@ -75,8 +75,6 @@ def arrow_column_descriptions(schema: Schema) -> List[Tuple[str, Any]]:
         description.append((schema.names[i], mapped_type))
     return description
 
-# TODO(brett): Use this later to generate `get_columns` compatible specs for the
-# columns held in the schema returned from CommandGetTables.
 def column_specs(schema: Schema) -> List[Dict]:
     cols = []
     for i in range(0, len(schema)):
