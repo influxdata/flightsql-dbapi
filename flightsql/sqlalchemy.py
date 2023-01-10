@@ -85,7 +85,7 @@ class DataFusionCompiler(compiler.SQLCompiler):
     # binding of the parameters. This should *not* be considered safe.
     # TODO: Remove this when we're able to support prepared statements.
     def visit_bindparam(self, bindparam, within_columns_clause=False, literal_binds=False, **kwargs):
-        return self.render_literal_bindparam(bindparam, bindparam.value)
+        return super().visit_bindparam(bindparam, within_columns_clause, True, **kwargs)
 
 class DataFusionDialect(FlightSQLDialect):
     """
