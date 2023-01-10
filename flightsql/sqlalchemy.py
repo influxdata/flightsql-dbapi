@@ -173,6 +173,8 @@ arrow_type_strings = {
 
     'float': types.FLOAT,
     'double': types.FLOAT,
+    'float32': types.FLOAT,
+    'float64': types.FLOAT,
 
     'int8': types.INTEGER,
     'int16': types.INTEGER,
