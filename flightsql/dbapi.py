@@ -6,6 +6,7 @@ from flightsql.api import (
     flightsql_get_columns,
     flightsql_get_table_names,
     flightsql_get_schema_names,
+    flightsql_get_sql_info,
 )
 from flightsql.exceptions import Error, NotSupportedError
 
@@ -145,6 +146,10 @@ class Connection():
     @check_closed
     def flightsql_get_schema_names(self):
         return flightsql_get_schema_names(self.flight_client, self.options)
+
+    @check_closed
+    def flightsql_get_sql_info(self):
+        return flightsql_get_sql_info(self.flight_client, self.options)
 
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)

@@ -51,6 +51,15 @@ def flightsql_get_schema_names(client: flight.FlightClient,
     df = reader.read_pandas()
     return df['db_schema_name'].tolist()
 
+def flightsql_get_sql_info(client: flight.FlightClient,
+                           options: Optional[flight.FlightCallOptions] = None) -> Dict[int, Any]:
+    """Get metadata about the server and its SQL features."""
+    command = flightsql.CommandGetSqlInfo()
+    info = client.get_flight_info(flight_descriptor(command), options)
+    reader = client.do_get(info.endpoints[0].ticket, options)
+    values = reader.read_all().to_pylist()
+    return {v['info_name']: v['value'] for v in values}
+
 def flight_descriptor(inner: Any) -> flight.FlightDescriptor:
     """Create a FlightDescriptor for a command."""
     any = any_pb2.Any()

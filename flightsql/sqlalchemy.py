@@ -1,6 +1,6 @@
 import re
 
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Dict
 from pyarrow import flight
 from sqlalchemy import pool
 from sqlalchemy.engine import reflection, default, URL
@@ -42,8 +42,15 @@ class FlightSQLDialect(default.DefaultDialect):
         import flightsql as dbapi
         return dbapi
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sql_info: Dict[int, Any] = {}
+
     def connect(self, *args, **kwargs):
         return self.dbapi.connect(*args, **kwargs)
+
+    def initialize(self, connection):
+        self.sql_info = connection.connection.flightsql_get_sql_info()
 
     def create_connect_args(self, url: str) -> List:
         client, call_options = client_from_url(url)
