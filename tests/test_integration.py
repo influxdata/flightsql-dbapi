@@ -1,9 +1,12 @@
 import os
 import pytest
+import flightsql.sqlalchemy
 from flightsql.dbapi import connect
 from flightsql.flight import create_client
 import flightsql.flightsql_pb2 as flightsql
 import sqlalchemy.sql.sqltypes as sqltypes
+
+from sqlalchemy import create_engine, inspect
 
 integration_disabled_msg = "INTEGRATION not set to 1. Skipping."
 
@@ -14,6 +17,20 @@ def new_conn():
     server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
     server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
     return connect(*create_client(host=server_host, port=server_port, insecure=True))
+
+@pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
+def test_integration_dialect_configuration():
+    engine = create_engine("datafusion+flightsql://127.0.0.1:3000?insecure=true&flightsql-dbapi-feature-metadata-reflection=true")
+
+    # Force the connection so we get our SQL information.
+    engine.connect()
+    info = engine.dialect.sql_info
+    assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
+
+    table_names = inspect(engine).get_table_names()
+    assert table_names == ['foreignTable',
+                           'intTable',
+                           'sqlite_sequence']
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dbapi_query():

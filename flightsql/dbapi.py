@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Dict
 
 from pyarrow import flight
 from flightsql.api import (
@@ -97,11 +97,13 @@ class Connection():
     def __init__(self,
                  flight_client: flight.FlightClient,
                  flight_call_options: Optional[flight.FlightCallOptions],
+                 features: Dict[str, str],
                  **kwargs):
         self.flight_client = flight_client
         self.options = flight_call_options
         self.closed = False
         self.cursors: List[Cursor] = []
+        self.features = features
 
     def __enter__(self) -> "Connection":
         return self

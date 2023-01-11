@@ -9,7 +9,10 @@ def create_client(host: str = "localhost",
                   insecure: Optional[bool] = None,
                   disable_server_verification: Optional[bool] = None,
                   metadata: Optional[Dict[str, str]] = None,
-                  **kwargs: Any) -> Tuple[flight.FlightClient, flight.FlightCallOptions]:
+                  features: Optional[Dict[str, str]] = None,
+                  **kwargs: Any) -> Tuple[flight.FlightClient,
+                                          flight.FlightCallOptions,
+                                          Dict[str, str]]:
 
     protocol = 'tls'
     client_args = {}
@@ -31,4 +34,7 @@ def create_client(host: str = "localhost",
         for k, v in metadata.items():
             headers.append((k.encode('utf-8'), v.encode('utf-8')))
 
-    return client, flight.FlightCallOptions(headers=headers)
+    if features is None:
+        features = {}
+
+    return client, flight.FlightCallOptions(headers=headers), features

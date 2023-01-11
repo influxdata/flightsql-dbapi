@@ -9,14 +9,25 @@ from sqlalchemy import types
 from sqlalchemy.dialects import registry
 
 from flightsql.flight import create_client
+import flightsql.flightsql_pb2 as flightsql
 
-def client_from_url(url: URL) -> Tuple[flight.FlightClient, flight.FlightCallOptions]:
+feature_prefix = "flightsql-dbapi-feature-"
+
+def use_metadata_reflection(conn):
+    return conn.connection.features.get('metadata-reflection') == 'true'
+
+def client_from_url(url: URL) -> Tuple[flight.FlightClient, flight.FlightCallOptions, Dict[str, str]]:
     fields = url.translate_connect_args(username='user')
 
     metadata = {k.lower(): v for k, v in url.query.items()}
     insecure = bool(metadata.pop('insecure', None))
     disable_server_verification = bool(metadata.pop('disable_server_verification', None))
     token = metadata.pop('token', None)
+
+    features = {}
+    for k in list(metadata.keys()):
+        if k.startswith(feature_prefix):
+            features[k[len(feature_prefix):]] = metadata.pop(k)
 
     return create_client(
         host=fields['host'],
@@ -27,6 +38,7 @@ def client_from_url(url: URL) -> Tuple[flight.FlightClient, flight.FlightCallOpt
         insecure=insecure,
         disable_server_verification=disable_server_verification,
         metadata=metadata,
+        features=features,
     )
 
 class FlightSQLDialect(default.DefaultDialect):
@@ -36,25 +48,28 @@ class FlightSQLDialect(default.DefaultDialect):
     """
 
     driver = "flightsql"
+    sql_info: Dict[int, Any] = {}
 
     @classmethod
     def dbapi(cls):
         import flightsql as dbapi
         return dbapi
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sql_info: Dict[int, Any] = {}
-
     def connect(self, *args, **kwargs):
         return self.dbapi.connect(*args, **kwargs)
 
     def initialize(self, connection):
-        self.sql_info = connection.connection.flightsql_get_sql_info()
+        sql_info = connection.connection.flightsql_get_sql_info([
+            flightsql.FLIGHT_SQL_SERVER_READ_ONLY,
+        ])
+        read_only = sql_info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY]
+        self.supports_delete = not read_only
+        self.supports_alter = not read_only
+        self.sql_info = sql_info
 
     def create_connect_args(self, url: str) -> List:
-        client, call_options = client_from_url(url)
-        return [[client, call_options], {}]
+        client, call_options, features = client_from_url(url)
+        return [[client, call_options, features], {}]
 
     def get_columns(self, connection, table, schema=None, **kwargs):
         return (connection.connection.flightsql_get_columns(table, schema))
@@ -90,7 +105,8 @@ class DataFusionCompiler(compiler.SQLCompiler):
 class DataFusionDialect(FlightSQLDialect):
     """
     DataFusionDialect is a SQLAlchemy Dialect that uses Flight SQL as its
-    transport layer and for metadata lookups.
+    transport layer and for metadata lookups. It is specifically tuned for the
+    baseline configuration of a DataFusion execution engine.
 
     This Dialect is currently using `information_schema` via ad-hoc queries to answer
     metadata questions. In this state DataFusionDialect is only useful against SQL
@@ -103,7 +119,6 @@ class DataFusionDialect(FlightSQLDialect):
     paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
     returns_unicode_strings = True
-    supports_alter = False
     supports_default_values = False
     supports_empty_insert = False
     supports_native_boolean = True
@@ -117,6 +132,9 @@ class DataFusionDialect(FlightSQLDialect):
     # TODO(brett): Remove this when we're ready to remove
     # `information_schema` usage.
     def get_columns(self, connection, table, schema=None, **kwargs):
+        if use_metadata_reflection(connection):
+            return super().get_columns(connection, table, schema=schema, **kwargs)
+
         sql = 'show columns from "{}"'.format(table)
         if schema is not None and schema != "":
             sql = 'show columns from "{}"."{}"'.format(schema, table)
@@ -145,6 +163,9 @@ class DataFusionDialect(FlightSQLDialect):
     # `information_schema` usage.
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kwargs):
+        if use_metadata_reflection(connection):
+            return super().get_table_names(connection, schema=schema, **kwargs)
+
         sql = 'select table_name from information_schema.tables'
         if schema is not None:
             sql = f"select table_name from information_schema.tables where table_schema = '{schema}'"
@@ -155,6 +176,8 @@ class DataFusionDialect(FlightSQLDialect):
     # `information_schema` usage.
     @reflection.cache
     def get_schema_names(self, connection, **kwargs):
+        if use_metadata_reflection(connection):
+            return super().get_schema_names(connection, **kwargs)
         result = connection.execute("select distinct table_schema from information_schema.tables")
         return [r[0] for r in result]
 
