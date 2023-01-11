@@ -92,7 +92,8 @@ shouldn't have to override those unless you have very specific needs.
 from flightsql import FlightSQLClient
 
 client = FlightSQLCLient(host='upstream.server.dev')
-reader = client.execute("select * from runs limit 10")
+info = client.execute("select * from runs limit 10")
+reader = client.do_get(info.endpoints[0].ticket)
 data_frame = reader.read_all().to_pandas()
 ```
 
@@ -134,9 +135,4 @@ upstream server as gRPC metadata.
 - Prepared statements support.
 - Reserved word collection from SQL info.
 - Schema lookup variants of `DoGet` calls.
-- Remaining metadata commands:
-  - `CommandGetCatalogs`
-  - `CommandGetCrossReference`
-  - `CommandGetExportedKeys`
-  - `CommandGetImportedKeys`
-  - `CommandGetTableTypes`
+- Update query support.
