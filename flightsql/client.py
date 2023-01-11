@@ -1,7 +1,7 @@
 from typing import Iterable, Optional, List, Any, Dict, Tuple
 from dataclasses import dataclass
 
-from pyarrow import flight
+from pyarrow import flight, Table
 from google.protobuf import any_pb2
 import flightsql.flightsql_pb2 as flightsql
 from flightsql.util import check_closed
@@ -26,6 +26,19 @@ class FlightSQLClient:
 
     def execute(self, query: str):
         return self._get_flight_info(flightsql.CommandStatementQuery(query=query))
+
+    def execute_update(self, query: str):
+        cmd = flightsql.CommandStatementUpdate(query=query)
+        desc = self._flight_descriptor(cmd)
+        writer, reader = self._do_put(desc)
+        result = reader.read()
+        writer.close()
+
+        if result is None:
+            return 0
+        update_result = flightsql.DoPutUpdateResult()
+        update_result.ParseFromString(result.to_pybytes())
+        return update_result.record_count
 
     def get_tables(self,
                    include_schema=False,
@@ -87,6 +100,10 @@ class FlightSQLClient:
     @check_closed
     def do_get(self, ticket):
         return self.client.do_get(ticket, self.options)
+
+    @check_closed
+    def _do_put(self, desc):
+        return self.client.do_put(desc, Table.from_arrays([]).schema, self.options)
 
     @check_closed
     def _get_flight_info(self, command):

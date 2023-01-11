@@ -36,6 +36,16 @@ def test_integration_dialect_configuration():
                            'sqlite_sequence']
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
+def test_integration_yada():
+    client = new_client()
+
+    update_query = "insert into intTable (id, keyName, value, foreignId) values (5, 'five', 5, 5)"
+    result = client.execute_update(update_query)
+    assert result == 1
+    result = client.execute_update("delete from intTable where id = 5")
+    assert result == 1
+
+@pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dbapi_query():
     conn = new_conn()
     cursor = conn.cursor()
