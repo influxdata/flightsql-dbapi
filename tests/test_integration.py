@@ -10,14 +10,17 @@ integration_disabled_msg = "INTEGRATION not set to 1. Skipping."
 def integration_disabled():
     return not (bool(os.getenv("INTEGRATION")) or False)
 
+def new_conn():
+    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
+    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
+    return connect(*create_client(host=server_host, port=server_port, insecure=True))
+
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dbapi_query():
     server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
     server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
 
-    conn = connect(*create_client(host=server_host,
-                                  port=server_port,
-                                  insecure=True))
+    conn = new_conn()
     cursor = conn.cursor()
     cursor.execute('select * from intTable')
 
@@ -37,13 +40,7 @@ def test_integration_dbapi_query():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_get_table_names():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-
-    conn = connect(*create_client(host=server_host,
-                                  port=server_port,
-                                  insecure=True))
-
+    conn = new_conn()
     names = conn.flightsql_get_table_names(None)
     assert names == ['foreignTable',
                      'intTable',
@@ -52,12 +49,7 @@ def test_integration_get_table_names():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_sql_info():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-
-    conn = connect(*create_client(host=server_host,
-                                  port=server_port,
-                                  insecure=True))
+    conn = new_conn()
 
     # Some servers respond with a full set of information if an empty list is
     # provided. This SQLite reference implementation seems to require specific
@@ -76,12 +68,7 @@ def test_integration_sql_info():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_get_columns():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-
-    conn = connect(*create_client(host=server_host,
-                                  port=server_port,
-                                  insecure=True))
+    conn = new_conn()
     columns = conn.flightsql_get_columns('intTable', None)
     assert columns == [
         {
@@ -117,12 +104,7 @@ def test_integration_get_columns():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_get_schema_names():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-
-    conn = connect(*create_client(host=server_host,
-                                  port=server_port,
-                                  insecure=True))
+    conn = new_conn()
 
     # SQLite doesn't support schemas, but we'll make sure its going through the
     # motions to arrive at an empty list.
