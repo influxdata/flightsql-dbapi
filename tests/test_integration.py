@@ -21,7 +21,7 @@ def new_conn():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dialect_configuration():
-    engine = create_engine("datafusion+flightsql://127.0.0.1:3000?insecure=true&flightsql-dbapi-feature-metadata-reflection=true")
+    engine = create_engine("datafusion+flightsql://127.0.0.1:3000?insecure=true")
 
     # Force the connection so we get our SQL information.
     engine.connect()
