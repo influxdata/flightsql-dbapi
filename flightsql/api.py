@@ -5,6 +5,7 @@ from pyarrow import flight, Table, Schema
 from google.protobuf import any_pb2
 from flightsql.arrow import resolve_sql_type
 import flightsql.flightsql_pb2 as flightsql
+from pandas import DataFrame
 
 def flightsql_execute(query: str,
                       client: flight.FlightClient,
@@ -14,6 +15,24 @@ def flightsql_execute(query: str,
     info = client.get_flight_info(flight_descriptor(command), options)
     reader = client.do_get(info.endpoints[0].ticket, options)
     return dbapi_results(reader.read_all())
+
+def flightsql_execute_to_pandas(query: str,
+                      client: flight.FlightClient,
+                      options: Optional[flight.FlightCallOptions] = None) -> Tuple[List, List]:
+    """Execute a Flight SQL query."""
+    command = flightsql.CommandStatementQuery(query=query)
+    info = client.get_flight_info(flight_descriptor(command), options)
+    reader = client.do_get(info.endpoints[0].ticket, options)
+    return return_pandas(reader.read_all())
+
+def flightsql_execute_to_arrow(query: str,
+                      client: flight.FlightClient,
+                      options: Optional[flight.FlightCallOptions] = None) -> Tuple[List, List]:
+    """Execute a Flight SQL query."""
+    command = flightsql.CommandStatementQuery(query=query)
+    info = client.get_flight_info(flight_descriptor(command), options)
+    reader = client.do_get(info.endpoints[0].ticket, options)
+    return return_arrow_table(reader.read_all())
 
 def flightsql_get_columns(table_name: str,
                           schema: str,
@@ -76,6 +95,21 @@ def dbapi_results(table: Table) -> Tuple[List, List]:
     df = table.to_pandas(date_as_object=False, integer_object_nulls=True)
     descriptions = arrow_column_descriptions(table.schema)
     return df.values.tolist(), descriptions
+
+def return_pandas(table: Table) -> DataFrame:
+    """
+    Read all chunks, convert into NumPy/Pandas and return the values and
+    column descriptions. Column descriptions are derived from the original Arrow
+    schema fields.
+    """
+    df = table.to_pandas(date_as_object=False, integer_object_nulls=True)
+    return df
+
+def return_arrow_table(table: Table) -> Table:
+    """
+    Keep the table as an arrow table
+    """
+    return table
 
 def arrow_column_descriptions(schema: Schema) -> List[Tuple[str, Any]]:
     """Map Arrow schema fields to SQL types."""
