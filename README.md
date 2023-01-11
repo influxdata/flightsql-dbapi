@@ -1,6 +1,8 @@
 :warning: This library is experimental and under active development. The APIs it
 provides could change at any time so use at your own risk.
 
+## Overview
+
 This library provides a [DB API 2](https://peps.python.org/pep-0249/) interface
 and [SQLAlchemy](https://www.sqlalchemy.org) Dialect for [Flight
 SQL](https://arrow.apache.org/docs/format/FlightSql.html).
@@ -12,6 +14,16 @@ The primary SQLAlchemy Dialect provided by `flightsql-dbapi` targets the
 [DataFusion](https://arrow.apache.org/datafusion) SQL execution engine. However,
 there extension points to create custom dialects using Flight SQL as a transport
 layer and for metadata discovery.
+
+## Installation
+
+`flightsql-dbapi` is in its early days so the APIs haven't settled enough for us
+to be publishing it as a package on PyPi yet. However, you are free to install
+it directly from GitHub until we do start publishing releases.
+
+```shell
+$ pip install git+https://github.com/influxdata/flightsql-dbapi.git#egg=flightsql-dbapi
+```
 
 ## Usage
 
