@@ -26,9 +26,9 @@ class FlightSQLClient:
                                                        table_types=table_types,
                                                        db_schema_filter_pattern=db_schema_filter_pattern))
 
-    def get_schemas(self,
-                    catalog: Optional[str] = None,
-                    db_schema_filter_pattern: Optional[str] = None):
+    def get_db_schemas(self,
+                       catalog: Optional[str] = None,
+                       db_schema_filter_pattern: Optional[str] = None):
         return self._do_get(flightsql.CommandGetDbSchemas(catalog=catalog,
                                                           db_schema_filter_pattern=db_schema_filter_pattern))
 

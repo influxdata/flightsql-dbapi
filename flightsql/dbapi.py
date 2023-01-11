@@ -168,7 +168,7 @@ def flightsql_get_table_names(schema: str, client: FlightSQLClient) -> Tuple[Lis
 
 def flightsql_get_schema_names(client: FlightSQLClient) -> Tuple[List, List]:
     """Get the names of all schemas."""
-    reader = client.get_schemas()
+    reader = client.get_db_schemas()
     return reader.read_pandas()['db_schema_name'].tolist()
 
 def flightsql_get_sql_info(info: List[int], client: FlightSQLClient) -> Dict[int, Any]:
