@@ -148,8 +148,8 @@ class Connection():
         return flightsql_get_schema_names(self.flight_client, self.options)
 
     @check_closed
-    def flightsql_get_sql_info(self):
-        return flightsql_get_sql_info(self.flight_client, self.options)
+    def flightsql_get_sql_info(self, info: List[int]):
+        return flightsql_get_sql_info(info, self.flight_client, self.options)
 
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)
