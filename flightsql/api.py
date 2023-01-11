@@ -73,7 +73,7 @@ def dbapi_results(table: Table) -> Tuple[List, List]:
     column descriptions. Column descriptions are derived from the original Arrow
     schema fields.
     """
-    df = table.to_pandas(date_as_object=False)
+    df = table.to_pandas(date_as_object=False, integer_object_nulls=True)
     descriptions = arrow_column_descriptions(table.schema)
     return df.values.tolist(), descriptions
 

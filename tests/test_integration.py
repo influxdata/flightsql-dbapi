@@ -27,21 +27,12 @@ def test_integration_dbapi_query():
         ('value', sqltypes.BIGINT),
         ('foreignId', sqltypes.BIGINT),
     ]
-    rows = [r for r in cursor]
-
-    # Only directly compare the first 3 elements, because the 4th has some NaN
-    # values we need to treat with more care.
-    assert rows[:3] == [
+    assert [r for r in cursor] == [
         [1, 'one', 1.0, 1.0],
         [2, 'zero', 0.0, 1.0],
         [3, 'negative one', -1.0, 1.0],
+        [4, None, None, None],
     ]
-    assert rows[3][0] == 4
-    assert rows[3][1] is None
-    # Is it a NaN?
-    assert rows[3][2] != rows[3][2]
-    assert rows[3][3] != rows[3][3]
-
     conn.close()
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
