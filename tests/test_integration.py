@@ -17,9 +17,6 @@ def new_conn():
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dbapi_query():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-
     conn = new_conn()
     cursor = conn.cursor()
     cursor.execute('select * from intTable')
