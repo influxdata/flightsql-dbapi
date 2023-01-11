@@ -1,13 +1,9 @@
-from typing import List, Optional, Tuple, Any, Dict
+from typing import Any, Optional, Tuple, List, Dict
 
-from pyarrow import flight
-from flightsql.api import (
-    flightsql_execute,
-    flightsql_get_columns,
-    flightsql_get_table_names,
-    flightsql_get_schema_names,
-    flightsql_get_sql_info,
-)
+from pyarrow import Table, Schema
+import pyarrow.ipc as ipc
+from flightsql.arrow import resolve_sql_type
+from flightsql.client import FlightSQLClient
 from flightsql.exceptions import Error, NotSupportedError
 
 paramstyle = "pyformat"
@@ -28,11 +24,8 @@ def check_result(f):
     return g
 
 class Cursor():
-    def __init__(self,
-                 flight_client: flight.FlightClient,
-                 options: Optional[flight.FlightCallOptions] = None):
-        self.flight_client = flight_client
-        self.options = options
+    def __init__(self, client: FlightSQLClient):
+        self.client = client
         self.arraysize = 1
         self.closed = False
         self.description: Optional[List[Any]] = None
@@ -49,7 +42,7 @@ class Cursor():
     @check_closed
     def execute(self, query: str, params=None) -> "Cursor":
         self.description = None
-        self._results, self.description = flightsql_execute(query, self.flight_client, self.options)
+        self._results, self.description = flightsql_execute(query, self.client)
         return self
 
     @check_closed
@@ -94,16 +87,10 @@ class Cursor():
         return len(self._results)
 
 class Connection():
-    def __init__(self,
-                 flight_client: flight.FlightClient,
-                 flight_call_options: Optional[flight.FlightCallOptions],
-                 features: Dict[str, str],
-                 **kwargs):
-        self.flight_client = flight_client
-        self.options = flight_call_options
+    def __init__(self, client: FlightSQLClient, **kwargs):
+        self.client = client
         self.closed = False
         self.cursors: List[Cursor] = []
-        self.features = features
 
     def __enter__(self) -> "Connection":
         return self
@@ -128,7 +115,7 @@ class Connection():
 
     @check_closed
     def cursor(self) -> Cursor:
-        cursor = Cursor(self.flight_client, self.options)
+        cursor = Cursor(self.client)
         self.cursors.append(cursor)
         return cursor
 
@@ -139,19 +126,83 @@ class Connection():
 
     @check_closed
     def flightsql_get_columns(self, table, schema):
-        return flightsql_get_columns(table, schema, self.flight_client, self.options)
+        return flightsql_get_columns(table, schema, self.client)
 
     @check_closed
     def flightsql_get_table_names(self, schema):
-        return flightsql_get_table_names(schema, self.flight_client, self.options)
+        return flightsql_get_table_names(schema, self.client)
 
     @check_closed
     def flightsql_get_schema_names(self):
-        return flightsql_get_schema_names(self.flight_client, self.options)
+        return flightsql_get_schema_names(self.client)
 
     @check_closed
     def flightsql_get_sql_info(self, info: List[int]):
-        return flightsql_get_sql_info(info, self.flight_client, self.options)
+        return flightsql_get_sql_info(info, self.client)
+
+    def features(self):
+        return self.client.features
 
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)
+
+def flightsql_execute(query: str, client: FlightSQLClient) -> Tuple[List, List]:
+    """Execute a Flight SQL query."""
+    return dbapi_results(client.execute(query).read_all())
+
+def flightsql_get_columns(table_name: str, schema: str, client: FlightSQLClient) -> List[Dict[Any, Any]]:
+    """Get the columns of a table using Flight SQL."""
+    reader = client.get_tables(table_name_filter_pattern=table_name,
+                               db_schema_filter_pattern=schema,
+                               include_schema=True)
+    table = reader.read_all()
+    # TODO(brett): Accessing the first element here without caution. Fix this.
+    table_schema = table.column('table_schema')[0].as_py()
+    reader = ipc.open_stream(table_schema)
+    return column_specs(reader.schema)
+
+def flightsql_get_table_names(schema: str, client: FlightSQLClient) -> Tuple[List, List]:
+    """Get the names of all tables within the schema."""
+    reader = client.get_tables(db_schema_filter_pattern=schema)
+    return reader.read_pandas()['table_name'].tolist()
+
+def flightsql_get_schema_names(client: FlightSQLClient) -> Tuple[List, List]:
+    """Get the names of all schemas."""
+    reader = client.get_schemas()
+    return reader.read_pandas()['db_schema_name'].tolist()
+
+def flightsql_get_sql_info(info: List[int], client: FlightSQLClient) -> Dict[int, Any]:
+    """Get metadata about the server and its SQL features."""
+    reader = client.get_sql_info(info)
+    values = reader.read_all().to_pylist()
+    return {v['info_name']: v['value'] for v in values}
+
+def column_specs(schema: Schema) -> List[Dict]:
+    cols = []
+    for i in range(0, len(schema)):
+        field = schema.field(i)
+        cols.append({
+            "name": field.name,
+            "type": resolve_sql_type(field.type),
+            "default": None,
+            "comment": None,
+            "nullable": field.nullable,
+        })
+    return cols
+
+def dbapi_results(table: Table) -> Tuple[List, List]:
+    """
+    Read all chunks, convert into NumPy/Pandas and return the values and
+    column descriptions. Column descriptions are derived from the original Arrow
+    schema fields.
+    """
+    df = table.to_pandas(date_as_object=False, integer_object_nulls=True)
+    descriptions = arrow_column_descriptions(table.schema)
+    return df.values.tolist(), descriptions
+
+def arrow_column_descriptions(schema: Schema) -> List[Tuple[str, Any]]:
+    """Map Arrow schema fields to SQL types."""
+    description = []
+    for i, t in enumerate(schema.types):
+        description.append((schema.names[i], resolve_sql_type(t)))
+    return description

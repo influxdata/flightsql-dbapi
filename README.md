@@ -18,10 +18,10 @@ layer and for metadata discovery.
 ### DB API 2 Interface ([PEP-249](https://peps.python.org/pep-0249))
 
 ```python3
-from flightsql.dbapi import connect
-from flightsql.flight import create_client
+from flightsql import connect, FlightSQLClient
 
-conn = connect(*create_client(host='upstream.server.dev'))
+client = FlightSQLCLient(host='upstream.server.dev')
+conn = connect(client)
 cursor = conn.cursor()
 cursor.execute('select * from runs limit 10')
 print("columns:", cursor.description)
@@ -66,6 +66,16 @@ class CustomDialect(FlightSQLDialect):
     # https://docs.sqlalchemy.org/en/14/core/internals.html#sqlalchemy.engine.default.DefaultDialect
 
 registry.register("custom.flightsql", "path.to.your.module", "CustomDialect")
+```
+
+### Directly with `flightsql.FlightSQLClient`
+
+```python3
+from flightsql import FlightSQLClient
+
+client = FlightSQLCLient(host='upstream.server.dev')
+reader = client.execute("select * from runs limit 10")
+data_frame = reader.read_all().to_pandas()
 ```
 
 DB API 2 Connection creation is provided by `FlightSQLDialect`.

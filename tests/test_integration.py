@@ -2,7 +2,7 @@ import os
 import pytest
 import flightsql.sqlalchemy
 from flightsql.dbapi import connect
-from flightsql.flight import create_client
+from flightsql.client import FlightSQLClient
 import flightsql.flightsql_pb2 as flightsql
 import sqlalchemy.sql.sqltypes as sqltypes
 
@@ -16,7 +16,8 @@ def integration_disabled():
 def new_conn():
     server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
     server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-    return connect(*create_client(host=server_host, port=server_port, insecure=True))
+    client = FlightSQLClient(host=server_host, port=server_port, insecure=True)
+    return connect(client)
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dialect_configuration():
@@ -91,21 +92,21 @@ def test_integration_get_columns():
             'default': None,
             'comment': None,
             'nullable': False,
-            },
+        },
         {
             'name': 'keyName',
             'type': sqltypes.TEXT,
             'default': None,
             'comment': None,
             'nullable': False,
-            },
+        },
         {
             'name': 'value',
             'type': sqltypes.BIGINT,
             'default': None,
             'comment': None,
             'nullable': False,
-            },
+        },
         {
             'name': 'foreignId',
             'type': sqltypes.BIGINT,

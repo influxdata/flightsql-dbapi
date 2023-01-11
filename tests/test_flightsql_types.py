@@ -1,6 +1,6 @@
 import pyarrow as pa
 from sqlalchemy.sql import sqltypes
-from flightsql.api import dbapi_results
+from flightsql.dbapi import dbapi_results
 from flightsql.arrow import resolve_sql_type
 
 def test_dbapi_results():

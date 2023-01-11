@@ -16,6 +16,8 @@ from flightsql.exceptions import (
     Warning,
 )
 
+from flightsql.client import FlightSQLClient
+
 __all__ = [
     "connect",
     "apilevel",
@@ -31,4 +33,6 @@ __all__ = [
     "OperationalError",
     "ProgrammingError",
     "Warning",
+
+    "FlightSQLClient",
 ]

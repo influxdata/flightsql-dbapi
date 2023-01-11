@@ -32,7 +32,7 @@ mypy: venv
 
 .PHONY: test
 test: venv
-	. venv/bin/activate; pytest
+	. venv/bin/activate; pytest -s
 
 activate: venv
 

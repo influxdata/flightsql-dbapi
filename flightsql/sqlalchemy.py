@@ -1,22 +1,21 @@
+from typing import Any, List, Dict
 import re
 
-from typing import Any, List, Tuple, Dict
-from pyarrow import flight
 from sqlalchemy import pool
 from sqlalchemy.engine import reflection, default, URL
 from sqlalchemy.sql import compiler
 from sqlalchemy import types
 from sqlalchemy.dialects import registry
 
-from flightsql.flight import create_client
+from flightsql.client import FlightSQLClient
 import flightsql.flightsql_pb2 as flightsql
 
 feature_prefix = "flightsql-dbapi-feature-"
 
 def use_metadata_reflection(conn):
-    return conn.connection.features.get('metadata-reflection') == 'true'
+    return conn.connection.features().get('metadata-reflection') == 'true'
 
-def client_from_url(url: URL) -> Tuple[flight.FlightClient, flight.FlightCallOptions, Dict[str, str]]:
+def client_from_url(url: URL) -> FlightSQLClient:
     fields = url.translate_connect_args(username='user')
 
     metadata = {k.lower(): v for k, v in url.query.items()}
@@ -29,7 +28,7 @@ def client_from_url(url: URL) -> Tuple[flight.FlightClient, flight.FlightCallOpt
         if k.startswith(feature_prefix):
             features[k[len(feature_prefix):]] = metadata.pop(k)
 
-    return create_client(
+    return FlightSQLClient(
         host=fields['host'],
         port=fields['port'],
         user=fields.pop('user', None),
@@ -68,8 +67,8 @@ class FlightSQLDialect(default.DefaultDialect):
         self.sql_info = sql_info
 
     def create_connect_args(self, url: str) -> List:
-        client, call_options, features = client_from_url(url)
-        return [[client, call_options, features], {}]
+        client = client_from_url(url)
+        return [[client], {}]
 
     def get_columns(self, connection, table, schema=None, **kwargs):
         return (connection.connection.flightsql_get_columns(table, schema))
