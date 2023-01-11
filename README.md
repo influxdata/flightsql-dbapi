@@ -68,6 +68,12 @@ class CustomDialect(FlightSQLDialect):
 registry.register("custom.flightsql", "path.to.your.module", "CustomDialect")
 ```
 
+DB API 2 Connection creation is provided by `FlightSQLDialect`.
+
+The core reflection APIs of `get_columns`, `get_table_names` and
+`get_schema_names` are implemented in terms of Flight SQL API calls so you
+shouldn't have to override those unless you have very specific needs.
+
 ### Directly with `flightsql.FlightSQLClient`
 
 ```python3
@@ -77,12 +83,6 @@ client = FlightSQLCLient(host='upstream.server.dev')
 reader = client.execute("select * from runs limit 10")
 data_frame = reader.read_all().to_pandas()
 ```
-
-DB API 2 Connection creation is provided by `FlightSQLDialect`.
-
-The core reflection APIs of `get_columns`, `get_table_names` and
-`get_schema_names` are implemented in terms of Flight SQL API calls so you
-shouldn't have to override those unless you have very specific needs.
 
 ### Authentication
 
