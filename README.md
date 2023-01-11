@@ -91,7 +91,7 @@ shouldn't have to override those unless you have very specific needs.
 ```python3
 from flightsql import FlightSQLClient
 
-client = FlightSQLCLient(host='upstream.server.dev')
+client = FlightSQLClient(host='upstream.server.dev')
 reader = client.execute("select * from runs limit 10")
 data_frame = reader.read_all().to_pandas()
 ```
