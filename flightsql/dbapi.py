@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, List, Dict
 from pyarrow import Table, Schema
 import pyarrow.ipc as ipc
 from flightsql.arrow import resolve_sql_type
-from flightsql.client import FlightSQLClient
+from flightsql.client import FlightSQLClient, TableRef
 from flightsql.exceptions import Error, NotSupportedError
 from flightsql.util import check_closed
 
@@ -36,7 +36,9 @@ class Cursor():
     @check_closed
     def execute(self, query: str, params=None) -> "Cursor":
         self.description = None
-        self._results, self.description = flightsql_execute(query, self.client)
+        info = self.client.execute(query)
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        self._results, self.description = dbapi_results(reader.read_all())
         return self
 
     @check_closed
@@ -119,63 +121,59 @@ class Connection():
         return cursor.execute(query)
 
     @check_closed
-    def flightsql_get_columns(self, table, schema):
-        return flightsql_get_columns(table, schema, self.client)
+    def flightsql_get_columns(self, table_name, schema):
+        """Get the columns of a table using Flight SQL."""
+        info = self.client.get_tables(table_name_filter_pattern=table_name,
+                                      db_schema_filter_pattern=schema,
+                                      include_schema=True)
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        table = reader.read_all()
+        # TODO(brett): Accessing the first element here without caution. Fix this.
+        table_schema = table.column('table_schema')[0].as_py()
+        reader = ipc.open_stream(table_schema)
+        return column_specs(reader.schema)
 
     @check_closed
     def flightsql_get_table_names(self, schema):
-        return flightsql_get_table_names(schema, self.client)
+        """Get the names of all tables within the schema."""
+        info = self.client.get_tables(db_schema_filter_pattern=schema)
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        return reader.read_pandas()['table_name'].tolist()
 
     @check_closed
     def flightsql_get_schema_names(self):
-        return flightsql_get_schema_names(self.client)
+        """Get the names of all schemas."""
+        info = self.client.get_db_schemas()
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        return reader.read_pandas()['db_schema_name'].tolist()
 
     @check_closed
     def flightsql_get_sql_info(self, info: List[int]):
-        return flightsql_get_sql_info(info, self.client)
+        """Get metadata about the server and its SQL features."""
+        finfo = self.client.get_sql_info(info)
+        reader = self.client.do_get(finfo.endpoints[0].ticket)
+        values = reader.read_all().to_pylist()
+        return {v['info_name']: v['value'] for v in values}
+
+    @check_closed
+    def flightsql_get_primary_keys(self, table: str, schema: Optional[str] = None):
+        ref = TableRef(table=table, db_schema=schema)
+        info = self.client.get_primary_keys(ref)
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        return reader.read_all().to_pylist()
+
+    @check_closed
+    def flightsql_get_foreign_keys(self, table: str, schema: Optional[str] = None):
+        ref = TableRef(table=table, db_schema=schema)
+        info = self.client.get_imported_keys(ref)
+        reader = self.client.do_get(info.endpoints[0].ticket)
+        return reader.read_all().to_pylist()
 
     def features(self):
         return self.client.features
 
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)
-
-def flightsql_execute(query: str, client: FlightSQLClient) -> Tuple[List, List]:
-    """Execute a Flight SQL query."""
-    info = client.execute(query)
-    reader = client.do_get(info.endpoints[0].ticket)
-    return dbapi_results(reader.read_all())
-
-def flightsql_get_columns(table_name: str, schema: str, client: FlightSQLClient) -> List[Dict[Any, Any]]:
-    """Get the columns of a table using Flight SQL."""
-    info = client.get_tables(table_name_filter_pattern=table_name,
-                             db_schema_filter_pattern=schema,
-                             include_schema=True)
-    reader = client.do_get(info.endpoints[0].ticket)
-    table = reader.read_all()
-    # TODO(brett): Accessing the first element here without caution. Fix this.
-    table_schema = table.column('table_schema')[0].as_py()
-    reader = ipc.open_stream(table_schema)
-    return column_specs(reader.schema)
-
-def flightsql_get_table_names(schema: str, client: FlightSQLClient) -> Tuple[List, List]:
-    """Get the names of all tables within the schema."""
-    info = client.get_tables(db_schema_filter_pattern=schema)
-    reader = client.do_get(info.endpoints[0].ticket)
-    return reader.read_pandas()['table_name'].tolist()
-
-def flightsql_get_schema_names(client: FlightSQLClient) -> Tuple[List, List]:
-    """Get the names of all schemas."""
-    info = client.get_db_schemas()
-    reader = client.do_get(info.endpoints[0].ticket)
-    return reader.read_pandas()['db_schema_name'].tolist()
-
-def flightsql_get_sql_info(info: List[int], client: FlightSQLClient) -> Dict[int, Any]:
-    """Get metadata about the server and its SQL features."""
-    finfo = client.get_sql_info(info)
-    reader = client.do_get(finfo.endpoints[0].ticket)
-    values = reader.read_all().to_pylist()
-    return {v['info_name']: v['value'] for v in values}
 
 def column_specs(schema: Schema) -> List[Dict]:
     cols = []

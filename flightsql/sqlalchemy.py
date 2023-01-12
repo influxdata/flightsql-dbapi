@@ -85,7 +85,11 @@ class FlightSQLDialect(default.DefaultDialect):
         return []
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kwargs):
-        return []
+        columns = connection.connection.flightsql_get_primary_keys(table_name, schema=schema)
+        if len(columns) == 0:
+            return {'constrained_columns': [], 'name': None}
+        names = [v['column_name'] for v in columns]
+        return {'constrained_columns': names, 'name': columns[0]['key_name']}
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kwargs):
         return []
