@@ -15,6 +15,6 @@ jobs:
       - name: Lint
         run: make lint
       - name: Start Reference Server
-        run: docker compose -f ./.github/docker-compose.yaml up --detach
+        run: docker compose -f ./.github/docker-compose.yml up --detach
       - name: Test
         run: make test INTEGRATION=1
