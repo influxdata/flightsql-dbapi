@@ -13,6 +13,7 @@ class TableRef:
     db_schema: Optional[str] = None
     table: str = ""
 
+@dataclass
 class CallOptions:
     timeout: Optional[float] = None
     headers: Optional[List[Tuple[str, str]]] = None
