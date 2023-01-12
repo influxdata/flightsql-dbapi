@@ -91,11 +91,13 @@ shouldn't have to override those unless you have very specific needs.
 ```python3
 from flightsql import FlightSQLClient
 
-client = FlightSQLCLient(host='upstream.server.dev',
-						 port=443,
-						 token='rosebud-motel-bearer-token')
+
+client = FlightSQLClient(host='upstream.server.dev',
+                         port=443,
+                         token='rosebud-motel-bearer-token')
 info = client.execute("select * from runs limit 10")
 reader = client.do_get(info.endpoints[0].ticket)
+
 data_frame = reader.read_all().to_pandas()
 ```
 
