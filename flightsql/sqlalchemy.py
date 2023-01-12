@@ -125,6 +125,8 @@ class DataFusionDialect(FlightSQLDialect):
     supports_statement_cache = True
     supports_unicode_binds = True
     supports_unicode_statements = True
+    supports_sane_rowcount = False
+    supports_sane_multi_rowcount = False
 
     statement_compiler = DataFusionCompiler
 
