@@ -8,7 +8,7 @@ and [SQLAlchemy](https://www.sqlalchemy.org) Dialect for [Flight
 SQL](https://arrow.apache.org/docs/format/FlightSql.html).
 
 Initially, this library aims to ease the process of connecting to Flight SQL
-APIs in [Apache Superset](https://superset.apache.org). 
+APIs in [Apache Superset](https://superset.apache.org).
 
 The primary SQLAlchemy Dialect provided by `flightsql-dbapi` targets the
 [DataFusion](https://arrow.apache.org/datafusion) SQL execution engine. However,
@@ -91,14 +91,19 @@ shouldn't have to override those unless you have very specific needs.
 ```python3
 from flightsql import FlightSQLClient
 
-client = FlightSQLClient(host='upstream.server.dev')
-reader = client.execute("select * from runs limit 10")
+
+client = FlightSQLClient(host='upstream.server.dev',
+                         port=443,
+                         token='rosebud-motel-bearer-token')
+info = client.execute("select * from runs limit 10")
+reader = client.do_get(info.endpoints[0].ticket)
+
 data_frame = reader.read_all().to_pandas()
 ```
 
 ### Authentication
 
-Both [Basic and Bearer Authentication](https://arrow.apache.org/docs/format/Flight.html#authentication) are supported. 
+Both [Basic and Bearer Authentication](https://arrow.apache.org/docs/format/Flight.html#authentication) are supported.
 
 To authenticate using Basic Authentication, supply a DSN as follows:
 
@@ -134,9 +139,4 @@ upstream server as gRPC metadata.
 - Prepared statements support.
 - Reserved word collection from SQL info.
 - Schema lookup variants of `DoGet` calls.
-- Remaining metadata commands:
-  - `CommandGetCatalogs`
-  - `CommandGetCrossReference`
-  - `CommandGetExportedKeys`
-  - `CommandGetImportedKeys`
-  - `CommandGetTableTypes`
+- Update query support.

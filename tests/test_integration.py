@@ -13,11 +13,13 @@ integration_disabled_msg = "INTEGRATION not set to 1. Skipping."
 def integration_disabled():
     return not (bool(os.getenv("INTEGRATION")) or False)
 
-def new_conn():
+def new_client():
     server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
     server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-    client = FlightSQLClient(host=server_host, port=server_port, insecure=True)
-    return connect(client)
+    return FlightSQLClient(host=server_host, port=server_port, insecure=True)
+
+def new_conn():
+    return connect(new_client())
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dialect_configuration():
@@ -32,6 +34,16 @@ def test_integration_dialect_configuration():
     assert table_names == ['foreignTable',
                            'intTable',
                            'sqlite_sequence']
+
+@pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
+def test_integration_yada():
+    client = new_client()
+
+    update_query = "insert into intTable (id, keyName, value, foreignId) values (5, 'five', 5, 5)"
+    result = client.execute_update(update_query)
+    assert result == 1
+    result = client.execute_update("delete from intTable where id = 5")
+    assert result == 1
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dbapi_query():

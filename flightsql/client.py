@@ -1,8 +1,16 @@
 from typing import Iterable, Optional, List, Any, Dict, Tuple
+from dataclasses import dataclass
 
-from pyarrow import flight
+from pyarrow import flight, Table
 from google.protobuf import any_pb2
 import flightsql.flightsql_pb2 as flightsql
+from flightsql.util import check_closed
+
+@dataclass
+class TableRef:
+    catalog: Optional[str] = None
+    db_schema: Optional[str] = None
+    table: str = ""
 
 class FlightSQLClient:
     def __init__(self, *args, **kwargs):
@@ -10,9 +18,27 @@ class FlightSQLClient:
         self.client = client
         self.options = options
         self.features = features
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+        self.client.close()
 
     def execute(self, query: str):
-        return self._do_get(flightsql.CommandStatementQuery(query=query))
+        return self._get_flight_info(flightsql.CommandStatementQuery(query=query))
+
+    def execute_update(self, query: str):
+        cmd = flightsql.CommandStatementUpdate(query=query)
+        desc = self._flight_descriptor(cmd)
+        writer, reader = self._do_put(desc)
+        result = reader.read()
+        writer.close()
+
+        if result is None:
+            return 0
+        update_result = flightsql.DoPutUpdateResult()
+        update_result.ParseFromString(result.to_pybytes())
+        return update_result.record_count
 
     def get_tables(self,
                    include_schema=False,
@@ -20,24 +46,68 @@ class FlightSQLClient:
                    table_types: Optional[Iterable[str]] = None,
                    table_name_filter_pattern: Optional[str] = None,
                    db_schema_filter_pattern: Optional[str] = None):
-        return self._do_get(flightsql.CommandGetTables(catalog=catalog,
-                                                       include_schema=include_schema,
-                                                       table_name_filter_pattern=table_name_filter_pattern,
-                                                       table_types=table_types,
-                                                       db_schema_filter_pattern=db_schema_filter_pattern))
+        cmd = flightsql.CommandGetTables(catalog=catalog,
+                                         include_schema=include_schema,
+                                         table_name_filter_pattern=table_name_filter_pattern,
+                                         table_types=table_types,
+                                         db_schema_filter_pattern=db_schema_filter_pattern)
+        return self._get_flight_info(cmd)
 
     def get_db_schemas(self,
                        catalog: Optional[str] = None,
                        db_schema_filter_pattern: Optional[str] = None):
-        return self._do_get(flightsql.CommandGetDbSchemas(catalog=catalog,
-                                                          db_schema_filter_pattern=db_schema_filter_pattern))
+        cmd = flightsql.CommandGetDbSchemas(catalog=catalog,
+                                            db_schema_filter_pattern=db_schema_filter_pattern)
+        return self._get_flight_info(cmd)
+
+    def get_catalogs(self):
+        return self._get_flight_info(flightsql.CommandGetCatalogs())
+
+    def get_primary_keys(self, table: TableRef):
+        cmd = flightsql.CommandGetPrimaryKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
+        return self._get_flight_info(cmd)
+
+    def get_exported_keys(self, table: TableRef):
+        cmd = flightsql.CommandGetExportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
+        return self._get_flight_info(cmd)
+
+    def get_imported_keys(self, table: TableRef):
+        cmd = flightsql.CommandGetImportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
+        return self._get_flight_info(cmd)
+
+    def get_cross_reference(self, pk_table: TableRef, fk_table: TableRef):
+        cmd = flightsql.CommandGetCrossReference(
+                fk_catalog=fk_table.catalog,
+                fk_db_schema=fk_table.db_schema,
+                fk_table=fk_table.table,
+                pk_catalog=pk_table.catalog,
+                pk_db_schema=pk_table.db_schema,
+                pk_table=pk_table.table)
+        return self._get_flight_info(cmd)
+
+    def get_xdbc_type_info(self, data_type: Optional[int]):
+        return self._get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type))
+
+    def prepare(self, query: str):
+        raise NotImplementedError("prepare is not implemented")
+
+    def get_table_types(self):
+        return self._get_flight_info(flightsql.CommandGetTableTypes())
 
     def get_sql_info(self, info: List[int]):
-        return self._do_get(flightsql.CommandGetSqlInfo(info=info))
+        return self._get_flight_info(flightsql.CommandGetSqlInfo(info=info))
 
-    def _do_get(self, command):
-        info = self.client.get_flight_info(self._flight_descriptor(command), self.options)
-        return self.client.do_get(info.endpoints[0].ticket, self.options)
+    @check_closed
+    def do_get(self, ticket):
+        return self.client.do_get(ticket, self.options)
+
+    @check_closed
+    def _do_put(self, desc):
+        return self.client.do_put(desc, Table.from_arrays([]).schema, self.options)
+
+    @check_closed
+    def _get_flight_info(self, command):
+        return self.client.get_flight_info(self._flight_descriptor(command), self.options)
 
     def _flight_descriptor(self, inner: Any) -> flight.FlightDescriptor:
         any = any_pb2.Any()
