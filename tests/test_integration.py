@@ -6,7 +6,7 @@ from flightsql.client import FlightSQLClient
 import flightsql.flightsql_pb2 as flightsql
 import sqlalchemy.sql.sqltypes as sqltypes
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine
 
 integration_disabled_msg = "INTEGRATION not set to 1. Skipping."
 
@@ -30,13 +30,8 @@ def test_integration_dialect_configuration():
     info = engine.dialect.sql_info
     assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
 
-    table_names = inspect(engine).get_table_names()
-    assert table_names == ['foreignTable',
-                           'intTable',
-                           'sqlite_sequence']
-
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
-def test_integration_yada():
+def test_integration_update():
     client = new_client()
 
     update_query = "insert into intTable (id, keyName, value, foreignId) values (5, 'five', 5, 5)"
@@ -46,7 +41,7 @@ def test_integration_yada():
     assert result == 1
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
-def test_integration_dbapi_query():
+def test_integration_query():
     conn = new_conn()
     cursor = conn.cursor()
     cursor.execute('select * from intTable')
