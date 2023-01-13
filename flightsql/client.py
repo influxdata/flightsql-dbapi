@@ -1,5 +1,6 @@
 from typing import Iterable, Optional, List, Any, Dict, Tuple
 from dataclasses import dataclass
+from collections import OrderedDict
 
 from pyarrow import flight, Table
 from pyarrow.ipc import IpcReadOptions, IpcWriteOptions
@@ -16,7 +17,7 @@ class TableRef:
 @dataclass
 class CallOptions:
     timeout: Optional[float] = None
-    headers: Optional[List[Tuple[str, str]]] = None
+    headers: Optional[List[Tuple[bytes, bytes]]] = None
     write_options: Optional[IpcWriteOptions] = None
     read_options: Optional[IpcReadOptions] = None
 
@@ -140,6 +141,10 @@ class FlightSQLClient:
 
             if call_options.headers is not None:
                 headers = headers + call_options.headers
+
+            # Deduplicate entries (tuples) based on their first field. Given two
+            # duplicate entries, the last one will win.
+            headers = list(OrderedDict(headers).items())
 
         return flight.FlightCallOptions(timeout=timeout,
                                         headers=headers,
