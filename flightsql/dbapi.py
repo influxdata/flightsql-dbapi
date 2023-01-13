@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple, List, Dict
+from typing import Any, Optional, Tuple, List, Dict, Union, Sequence, Iterable
 
 from pyarrow import Table, Schema
 import pyarrow.ipc as ipc
@@ -9,6 +9,8 @@ from flightsql.util import check_closed
 
 paramstyle = "pyformat"
 apilevel = "2.0"
+
+Parameters = Union[Sequence[Any], Dict[Union[str, int], Any]]
 
 def check_result(f):
     def g(self, *args, **kwargs):
@@ -23,10 +25,10 @@ class Cursor():
         self.arraysize = 1
         self.closed = False
         self.description: Optional[List[Any]] = None
-        self._results: List[Any] = []
+        self._results: List[Sequence[Any]] = []
 
     @check_closed
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Sequence[Any]]:
         return iter(self._results)
 
     @check_closed
@@ -34,20 +36,19 @@ class Cursor():
         self.closed = True
 
     @check_closed
-    def execute(self, query: str, params=None) -> "Cursor":
+    def execute(self, query: str, params: Optional[Parameters] = None) -> "Cursor":
         self.description = None
         info = self.client.execute(query)
         reader = self.client.do_get(info.endpoints[0].ticket)
         self._results, self.description = dbapi_results(reader.read_all())
         return self
 
-    @check_closed
-    def executemany(self, query: str):
+    def executemany(self, query: str, params: Sequence[Parameters]) -> "Cursor":
         raise NotSupportedError('executemany is not supported')
 
     @check_result
     @check_closed
-    def fetchone(self) -> Optional[Tuple[Any, ...]]:
+    def fetchone(self) -> Optional[Sequence[Any]]:
         try:
             return self._results.pop(0)
         except IndexError:
@@ -55,7 +56,7 @@ class Cursor():
 
     @check_result
     @check_closed
-    def fetchmany(self, size: Optional[int] = None) -> List[Tuple[Any, ...]]:
+    def fetchmany(self, size: Optional[int] = None) -> Sequence[Sequence[Any]]:
         size = size or self.arraysize
         out = self._results[:size]
         self._results = self._results[size:]
@@ -63,7 +64,7 @@ class Cursor():
 
     @check_result
     @check_closed
-    def fetchall(self):
+    def fetchall(self) -> Sequence[Sequence[Any]]:
         out = self._results[:]
         self._results = []
         return out
@@ -116,12 +117,12 @@ class Connection():
         return cursor
 
     @check_closed
-    def execute(self, query) -> Cursor:
+    def execute(self, query: str) -> Cursor:
         cursor = self.cursor()
         return cursor.execute(query)
 
     @check_closed
-    def flightsql_get_columns(self, table_name, schema):
+    def flightsql_get_columns(self, table_name: str, schema: Optional[str] = None) -> List[Dict]:
         """Get the columns of a table using Flight SQL."""
         info = self.client.get_tables(table_name_filter_pattern=table_name,
                                       db_schema_filter_pattern=schema,
@@ -134,21 +135,21 @@ class Connection():
         return column_specs(reader.schema)
 
     @check_closed
-    def flightsql_get_table_names(self, schema):
+    def flightsql_get_table_names(self, schema: Optional[str] = None) -> List[str]:
         """Get the names of all tables within the schema."""
         info = self.client.get_tables(db_schema_filter_pattern=schema)
         reader = self.client.do_get(info.endpoints[0].ticket)
         return reader.read_pandas()['table_name'].tolist()
 
     @check_closed
-    def flightsql_get_schema_names(self):
+    def flightsql_get_schema_names(self) -> List[str]:
         """Get the names of all schemas."""
         info = self.client.get_db_schemas()
         reader = self.client.do_get(info.endpoints[0].ticket)
         return reader.read_pandas()['db_schema_name'].tolist()
 
     @check_closed
-    def flightsql_get_sql_info(self, info: List[int]):
+    def flightsql_get_sql_info(self, info: List[int]) -> Dict[str, Any]:
         """Get metadata about the server and its SQL features."""
         finfo = self.client.get_sql_info(info)
         reader = self.client.do_get(finfo.endpoints[0].ticket)
@@ -156,20 +157,20 @@ class Connection():
         return {v['info_name']: v['value'] for v in values}
 
     @check_closed
-    def flightsql_get_primary_keys(self, table: str, schema: Optional[str] = None):
+    def flightsql_get_primary_keys(self, table: str, schema: Optional[str] = None) -> List[Dict[str, Any]]:
         ref = TableRef(table=table, db_schema=schema)
         info = self.client.get_primary_keys(ref)
         reader = self.client.do_get(info.endpoints[0].ticket)
         return reader.read_all().to_pylist()
 
     @check_closed
-    def flightsql_get_foreign_keys(self, table: str, schema: Optional[str] = None):
+    def flightsql_get_foreign_keys(self, table: str, schema: Optional[str] = None) -> List[Dict[str, Any]]:
         ref = TableRef(table=table, db_schema=schema)
         info = self.client.get_imported_keys(ref)
         reader = self.client.do_get(info.endpoints[0].ticket)
         return reader.read_all().to_pylist()
 
-    def features(self):
+    def features(self) -> Dict[str, str]:
         return self.client.features
 
 def connect(*args, **kwargs) -> Connection:
