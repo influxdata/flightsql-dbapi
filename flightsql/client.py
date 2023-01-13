@@ -39,7 +39,7 @@ class FlightSQLClient:
     def execute_update(self, query: str, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandStatementUpdate(query=query)
         desc = self._flight_descriptor(cmd)
-        writer, reader = self._do_put(desc, call_options)
+        writer, reader = self.do_put(desc, call_options)
         result = reader.read()
         writer.close()
 
@@ -114,7 +114,7 @@ class FlightSQLClient:
         return self.client.do_get(ticket, options)
 
     @check_closed
-    def _do_put(self, desc, call_options: Optional[CallOptions] = None):
+    def do_put(self, desc, call_options: Optional[CallOptions] = None):
         options = self._merged_call_options(call_options)
         return self.client.do_put(desc, Table.from_arrays([]).schema, options)
 
