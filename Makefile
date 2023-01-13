@@ -32,7 +32,7 @@ mypy: venv
 
 .PHONY: test
 test: venv
-	. venv/bin/activate; pytest -s
+	. venv/bin/activate; SQLALCHEMY_SILENCE_UBER_WARNING=1 pytest --cov=flightsql -s
 
 activate: venv
 

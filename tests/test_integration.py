@@ -1,39 +1,82 @@
+# This is a collection of tests that call out to a reference implemetation of
+# Flight SQL. They aim to exercise the FlightSQLClient, DB API interface and
+# SQLalchemy Dialect.
+#
+# Even though the upstream reference server isn't DataFusion (it's SQLite)
+# we can still get pretty far when testing the DataFusion Dialect. We'll only be
+# testing functionality here that's leveraging Flight SQL or where the syntactic
+# differences between the SQLite and DataFusion dialects are the same.
+#
+# TODO(brett): We should eventually swap this server out with one backed by
+# DataFusion that supports all of the functionality of Flight SQL.
+
 import os
 import pytest
+
+import sqlalchemy.sql.sqltypes as sqltypes
+from sqlalchemy import Column
+from sqlalchemy import String, Integer
+from sqlalchemy import select
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Session
+from sqlalchemy.schema import MetaData, Table
+from sqlalchemy import create_engine
+
 import flightsql.sqlalchemy
 from flightsql.dbapi import connect
 from flightsql.client import FlightSQLClient
 import flightsql.flightsql_pb2 as flightsql
-import sqlalchemy.sql.sqltypes as sqltypes
-
-from sqlalchemy import create_engine
 
 integration_disabled_msg = "INTEGRATION not set to 1. Skipping."
 
 def integration_disabled():
     return not (bool(os.getenv("INTEGRATION")) or False)
 
+def host_port():
+    host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
+    port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
+    return host, port
+
 def new_client():
-    server_host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    server_port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
-    return FlightSQLClient(host=server_host, port=server_port, insecure=True)
+    host, port = host_port()
+    return FlightSQLClient(host=host, port=port, insecure=True)
+
+def new_sqlalchemy_engine():
+    host, port = host_port()
+    return create_engine(f"datafusion+flightsql://{host}:{port}?insecure=true")
 
 def new_conn():
     return connect(new_client())
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_dialect_configuration():
-    engine = create_engine("datafusion+flightsql://127.0.0.1:3000?insecure=true")
-
+    engine = new_sqlalchemy_engine()
     # Force the connection so we get our SQL information.
     engine.connect()
     info = engine.dialect.sql_info
     assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
 
 @pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
+def test_integration_dialect_basic_orm():
+    engine = new_sqlalchemy_engine()
+    base = declarative_base()
+    metadata = MetaData()
+
+    class Record(base):
+        __tablename__ = Table('intTable', metadata, autoload=True, autoload_with=engine)
+        id = Column(Integer, primary_key=True)
+        key_name = Column(Integer, name="keyName")
+        value = Column(String)
+
+    session = Session(engine)
+    stmt = select(Record).where(Record.id.in_([1, 2, 3]))
+    results = session.scalars(stmt).all()
+    assert [r.key_name for r in results] == ["one", "zero", "negative one"]
+    assert [r.value for r in results] == [1, 0, -1]
+
+@pytest.mark.skipif(integration_disabled(), reason=integration_disabled_msg)
 def test_integration_update():
     client = new_client()
-
     update_query = "insert into intTable (id, keyName, value, foreignId) values (5, 'five', 5, 5)"
     result = client.execute_update(update_query)
     assert result == 1
