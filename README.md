@@ -133,10 +133,3 @@ The token will be placed in an appropriate `Authentication: Bearer ...` HTTP hea
 
 Any query parameters *not* specified in the above table will be sent to the
 upstream server as gRPC metadata.
-
-## Future Work
-
-- Prepared statements support.
-- Reserved word collection from SQL info.
-- Schema lookup variants of `DoGet` calls.
-- Update query support.
