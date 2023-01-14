@@ -16,7 +16,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
-
 dependencies = [
     'sqlalchemy<2.0',
     'pyarrow>=5.0.0',

@@ -1,4 +1,7 @@
-PYTHON3=python3
+SYSTEM_PYTHON3=python3
+VENV=venv
+BIN=$(VENV)/bin
+PYTHON3=$(BIN)/python3
 
 .DEFAULT_GOAL := build
 
@@ -8,8 +11,8 @@ build:
 
 .PHONY: clean
 clean:
+	rm -rf $(VENV)
 	rm -rf dist
-	rm -rf venv
 	rm -rf __pycache__
 
 .PHONY: proto
@@ -24,22 +27,20 @@ lint: mypy flake8
 
 .PHONY: flake8
 flake8:
-	. venv/bin/activate; $(PYTHON3) -m pflake8 .
+	$(PYTHON3) -m pflake8 .
 
 .PHONY: mypy
 mypy: venv
-	. venv/bin/activate; $(PYTHON3) -m mypy -p flightsql --ignore-missing-imports
+	$(PYTHON3) -m mypy -p flightsql --ignore-missing-imports
 
 .PHONY: test
 test: venv
-	. venv/bin/activate; SQLALCHEMY_SILENCE_UBER_WARNING=1 pytest --cov=flightsql -s
-
-activate: venv
+	SQLALCHEMY_SILENCE_UBER_WARNING=1 $(PYTHON3) -m pytest --cov=flightsql -s
 
 .PHONY: venv
 venv: venv/touchfile
 
 venv/touchfile: pyproject.toml
-	test -d venv || $(PYTHON3) -m venv venv
+	$(SYSTEM_PYTHON3) -m venv $(VENV)
 	. venv/bin/activate; $(PYTHON3) -m pip install '.[dev]'
-	touch venv/touchfile
+	touch $(VENV)/touchfile
