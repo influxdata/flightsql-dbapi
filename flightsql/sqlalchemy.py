@@ -61,7 +61,7 @@ class FlightSQLDialect(default.DefaultDialect):
         self.supports_alter = not read_only
         self.sql_info = sql_info
 
-    def create_connect_args(self, url: str) -> List:
+    def create_connect_args(self, url: URL) -> List:
         client = client_from_url(url)
         return [[client], {}]
 
