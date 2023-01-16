@@ -8,7 +8,9 @@ from sqlalchemy.dialects import registry
 from flightsql.client import FlightSQLClient
 import flightsql.flightsql_pb2 as flightsql
 
-feature_prefix = "flightsql-dbapi-feature-"
+feature_prefix = "feature-"
+
+FEATURE_PREPARED_STATEMENTS = 'sqlalchemy-prepared-statements'
 
 def client_from_url(url: URL) -> FlightSQLClient:
     fields = url.translate_connect_args(username='user')
@@ -53,6 +55,8 @@ class FlightSQLDialect(default.DefaultDialect):
         return self.dbapi.connect(*args, **kwargs)
 
     def initialize(self, connection):
+        super().initialize(connection)
+
         sql_info = connection.connection.flightsql_get_sql_info([
             flightsql.FLIGHT_SQL_SERVER_READ_ONLY,
         ])
@@ -97,7 +101,7 @@ class FlightSQLDialect(default.DefaultDialect):
     def get_view_names(self, connection, schema=None, **kwargs):
         return []
 
-class DataFusionCompiler(compiler.SQLCompiler):
+class LiteralBindCompiler(compiler.SQLCompiler):
     # Force bind parameters to be replaced by their underlying value. IOx
     # doesn't support prepared statements so we'll need to do perform literal
     # binding of the parameters. This should *not* be considered safe.
@@ -132,6 +136,17 @@ class DataFusionDialect(FlightSQLDialect):
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
 
-    statement_compiler = DataFusionCompiler
+    def initialize(self, connection):
+        super().initialize(connection)
+
+        # Use the literal binding SQL compiler if we haven't turned on the
+        # prepared statements feature. This ensures that the client won't
+        # attempt to create a prepared statement if the upstream server isn't
+        # expected to support it.
+        prepared_statements_enabled = connection.connection.features.get(FEATURE_PREPARED_STATEMENTS)
+        if prepared_statements_enabled != 'on':
+            self.statement_compiler = LiteralBindCompiler
+        else:
+            self.statement_compiler = compiler.SQLCompiler
 
 registry.register("datafusion.flightsql", "flightsql.sqlalchemy", "DataFusionDialect")

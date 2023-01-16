@@ -2,11 +2,15 @@ from typing import Iterable, Optional, List, Any, Dict, Tuple
 from dataclasses import dataclass
 from collections import OrderedDict
 
-from pyarrow import flight, Table
+import pyarrow as pa
+from pyarrow import flight
 from pyarrow.ipc import IpcReadOptions, IpcWriteOptions
 from google.protobuf import any_pb2
 import flightsql.flightsql_pb2 as flightsql
 from flightsql.util import check_closed
+
+ActionTypeCreatePreparedStatement = "CreatePreparedStatement"
+ActionTypeClosePreparedStatement = "ClosePreparedStatement"
 
 @dataclass
 class TableRef:
@@ -20,6 +24,44 @@ class CallOptions:
     headers: Optional[List[Tuple[bytes, bytes]]] = None
     write_options: Optional[IpcWriteOptions] = None
     read_options: Optional[IpcReadOptions] = None
+
+class PreparedStatement:
+    def __init__(self,
+                 client: flight.FlightClient,
+                 options: flight.FlightCallOptions,
+                 handle: bytes):
+        self.client = client
+        self.options = options
+        self.handle = handle
+        self.dataset_schema: Optional[pa.Schema] = None
+        self.parameter_schema: Optional[pa.Schema] = None
+        self.closed = False
+
+    def __enter__(self) -> "PreparedStatement":
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
+    @check_closed
+    def execute(self, binding: pa.RecordBatch) -> flight.FlightInfo:
+        cmd = flightsql.CommandPreparedStatementQuery(prepared_statement_handle=self.handle)
+        desc = flight_descriptor(cmd)
+
+        if binding is not None and binding.num_rows > 0:
+            writer, reader = self.client.do_put(desc, binding.schema)
+            writer.write(binding)
+            writer.done_writing()
+            reader.read()
+
+        return self.client.get_flight_info(desc, self.options)
+
+    @check_closed
+    def close(self) -> None:
+        request = action(ActionTypeClosePreparedStatement,
+                         flightsql.ActionClosePreparedStatementRequest(prepared_statement_handle=self.handle))
+        self.client.do_action(request, self.options)
+        self.closed = True
 
 class FlightSQLClient:
     def __init__(self, *args, **kwargs):
@@ -38,7 +80,7 @@ class FlightSQLClient:
 
     def execute_update(self, query: str, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandStatementUpdate(query=query)
-        desc = self._flight_descriptor(cmd)
+        desc = flight_descriptor(cmd)
         writer, reader = self.do_put(desc, call_options)
         result = reader.read()
         writer.close()
@@ -99,8 +141,28 @@ class FlightSQLClient:
     def get_xdbc_type_info(self, data_type: Optional[int], call_options: Optional[CallOptions] = None):
         return self._get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type), call_options)
 
-    def prepare(self, query: str, call_options: Optional[CallOptions] = None):
-        raise NotImplementedError("prepare is not implemented")
+    def prepare(self, query: str, call_options: Optional[CallOptions] = None) -> PreparedStatement:
+        request = action(ActionTypeCreatePreparedStatement,
+                         flightsql.ActionCreatePreparedStatementRequest(query=query))
+        options = self._merged_call_options(call_options)
+        stream = self.client.do_action(request, options)
+
+        flight_results = [r for r in stream]
+
+        result_wrap = any_pb2.Any()
+        result_wrap.ParseFromString(flight_results[0].body.to_pybytes())
+        result = flightsql.ActionCreatePreparedStatementResult()
+        result_wrap.Unpack(result)
+
+        if result.dataset_schema is not None:
+            # TODO(brett): Parse this and place into the PreparedStatement.
+            pass
+
+        if result.parameter_schema is not None:
+            # TODO(brett): Parse this and place into the PreparedStatement.
+            pass
+
+        return PreparedStatement(self.client, options, result.prepared_statement_handle)
 
     def get_table_types(self, call_options: Optional[CallOptions] = None):
         return self._get_flight_info(flightsql.CommandGetTableTypes(), call_options)
@@ -116,17 +178,12 @@ class FlightSQLClient:
     @check_closed
     def do_put(self, desc, call_options: Optional[CallOptions] = None):
         options = self._merged_call_options(call_options)
-        return self.client.do_put(desc, Table.from_arrays([]).schema, options)
+        return self.client.do_put(desc, pa.Table.from_arrays([]).schema, options)
 
     @check_closed
     def _get_flight_info(self, command, call_options: Optional[CallOptions] = None):
         options = self._merged_call_options(call_options)
-        return self.client.get_flight_info(self._flight_descriptor(command), options)
-
-    def _flight_descriptor(self, inner: Any) -> flight.FlightDescriptor:
-        any = any_pb2.Any()
-        any.Pack(inner)
-        return flight.FlightDescriptor.for_command(any.SerializeToString())
+        return self.client.get_flight_info(flight_descriptor(command), options)
 
     def _merged_call_options(self, call_options: Optional[CallOptions] = None):
         headers = self.headers
@@ -189,3 +246,15 @@ class FlightSQLClient:
             features = {}
 
         return client, headers, features
+
+
+def flight_descriptor(inner: Any) -> flight.FlightDescriptor:
+    any = any_pb2.Any()
+    any.Pack(inner)
+    return flight.FlightDescriptor.for_command(any.SerializeToString())
+
+def action(action_type, body) -> flight.Action:
+    any = any_pb2.Any()
+    any.Pack(body)
+    any.SerializeToString()
+    return flight.Action(action_type, any.SerializeToString())
