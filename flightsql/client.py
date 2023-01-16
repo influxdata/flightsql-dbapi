@@ -240,9 +240,8 @@ def create_flight_client(host: str = "localhost",
     else:
         headers.append((b'authorization', f"Bearer {token}".encode('utf-8')))
 
-    if metadata:
-        for k, v in metadata.items():
-            headers.append((k.encode('utf-8'), v.encode('utf-8')))
+    for k, v in (metadata or {}).items():
+        headers.append((k.encode('utf-8'), v.encode('utf-8')))
 
     return client, headers
 
