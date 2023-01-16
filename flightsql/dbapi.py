@@ -294,7 +294,7 @@ class ParameterRecordBuilder:
         bool: pa.bool_
     }
 
-    def __init__(self, values: Union[Tuple[Any, ...], List[Any]]):
+    def __init__(self, values: ExecuteParams):
         self.values = values
 
     def union_array_for_value(self, value: Any) -> pa.UnionArray:
