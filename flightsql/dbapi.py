@@ -1,16 +1,14 @@
-from typing import Any, Optional, Tuple, List, Dict, Union, Sequence, Iterable
+from typing import Any, Optional, Tuple, List, Dict, Sequence, Iterable
 
 from pyarrow import Table, Schema
 import pyarrow.ipc as ipc
-from flightsql.arrow import resolve_sql_type
+from flightsql.arrow import resolve_sql_type, ParameterRecordBuilder
 from flightsql.client import FlightSQLClient, TableRef
-from flightsql.exceptions import Error, NotSupportedError
+from flightsql.exceptions import Error
 from flightsql.util import check_closed
 
-paramstyle = "pyformat"
+paramstyle = "qmark"
 apilevel = "2.0"
-
-Parameters = Union[Sequence[Any], Dict[Union[str, int], Any]]
 
 def check_result(f):
     def g(self, *args, **kwargs):
@@ -36,15 +34,38 @@ class Cursor():
         self.closed = True
 
     @check_closed
-    def execute(self, query: str, params: Optional[Parameters] = None) -> "Cursor":
+    def execute(self, query: str, params: Optional[Tuple[Any, ...]] = None) -> "Cursor":
         self.description = None
-        info = self.client.execute(query)
-        reader = self.client.do_get(info.endpoints[0].ticket)
-        self._results, self.description = dbapi_results(reader.read_all())
-        return self
+        self._results = []
 
-    def executemany(self, query: str, params: Sequence[Parameters]) -> "Cursor":
-        raise NotSupportedError('executemany is not supported')
+        if params is None or len(params) == 0:
+            info = self.client.execute(query)
+            reader = self.client.do_get(info.endpoints[0].ticket)
+            self._results, self.description = dbapi_results(reader.read_all())
+            return self
+
+        with self.client.prepare(query) as stmt:
+            builder = ParameterRecordBuilder(params or ())
+            record = builder.build_record()
+            info = stmt.execute(record)
+            reader = self.client.do_get(info.endpoints[0].ticket)
+            self._results, self.description = dbapi_results(reader.read_all())
+            return self
+
+    def executemany(self, query: str, param_seq: Sequence[Tuple[Any, ...]]) -> "Cursor":
+        self.description = None
+        self._results = []
+
+        if param_seq is None or len(param_seq) == 0:
+            return self.execute(query)
+
+        with self.client.prepare(query) as stmt:
+            for params in param_seq:
+                builder = ParameterRecordBuilder(params or ())
+                record = builder.build_record()
+                info = stmt.execute(record)
+                self.client.do_get(info.endpoints[0].ticket).read_all()
+            return self
 
     @check_result
     @check_closed
@@ -117,9 +138,14 @@ class Connection():
         return cursor
 
     @check_closed
-    def execute(self, query: str) -> Cursor:
+    def execute(self, *args, **kwargs) -> Cursor:
         cursor = self.cursor()
-        return cursor.execute(query)
+        return cursor.execute(*args, **kwargs)
+
+    @check_closed
+    def executemany(self, *args, **kwargs) -> Cursor:
+        cursor = self.cursor()
+        return cursor.executemany(*args, **kwargs)
 
     @check_closed
     def flightsql_get_columns(self, table_name: str, schema: Optional[str] = None) -> List[Dict]:
@@ -170,6 +196,7 @@ class Connection():
         reader = self.client.do_get(info.endpoints[0].ticket)
         return reader.read_all().to_pylist()
 
+    @property
     def features(self) -> Dict[str, str]:
         return self.client.features
 
