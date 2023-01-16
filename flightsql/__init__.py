@@ -35,4 +35,5 @@ __all__ = [
     "Warning",
 
     "FlightSQLClient",
+    "FlightSQLClientCallOptions",
 ]

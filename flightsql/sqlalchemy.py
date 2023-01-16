@@ -1,5 +1,4 @@
 from typing import Any, List, Dict
-
 from sqlalchemy import pool
 from sqlalchemy.engine import reflection, default, URL
 from sqlalchemy.sql import compiler

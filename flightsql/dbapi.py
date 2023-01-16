@@ -8,7 +8,6 @@ from typing import (
     Iterable,
     Union,
 )
-from pyarrow import Table, Schema
 import pyarrow as pa
 import pyarrow.ipc as ipc
 from sqlalchemy import types
@@ -220,7 +219,7 @@ class Connection():
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)
 
-def column_specs(schema: Schema) -> List[Dict]:
+def column_specs(schema: pa.Schema) -> List[Dict]:
     cols = []
     for i in range(0, len(schema)):
         field = schema.field(i)
@@ -233,7 +232,7 @@ def column_specs(schema: Schema) -> List[Dict]:
         })
     return cols
 
-def dbapi_results(table: Table) -> Tuple[List, List]:
+def dbapi_results(table: pa.Table) -> Tuple[List, List]:
     """
     Read all chunks, convert into NumPy/Pandas and return the values and
     column descriptions. Column descriptions are derived from the original Arrow
@@ -243,7 +242,7 @@ def dbapi_results(table: Table) -> Tuple[List, List]:
     descriptions = arrow_column_descriptions(table.schema)
     return df.values.tolist(), descriptions
 
-def arrow_column_descriptions(schema: Schema) -> List[Tuple[str, Any]]:
+def arrow_column_descriptions(schema: pa.Schema) -> List[Tuple[str, Any]]:
     """Map Arrow schema fields to SQL types."""
     description = []
     for i, t in enumerate(schema.types):
