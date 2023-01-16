@@ -65,7 +65,7 @@ class PreparedStatement:
 
 class FlightSQLClient:
     def __init__(self, *args, **kwargs):
-        client, headers, features = self._create_client(*args, **kwargs)
+        client, headers, features = create_flight_client(*args, **kwargs)
         self.client = client
         self.headers = headers
         self.features = features
@@ -76,7 +76,7 @@ class FlightSQLClient:
         self.client.close()
 
     def execute(self, query: str, call_options: Optional[CallOptions] = None):
-        return self._get_flight_info(flightsql.CommandStatementQuery(query=query), call_options)
+        return self.get_flight_info(flightsql.CommandStatementQuery(query=query), call_options)
 
     def execute_update(self, query: str, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandStatementUpdate(query=query)
@@ -103,7 +103,7 @@ class FlightSQLClient:
                                          table_name_filter_pattern=table_name_filter_pattern,
                                          table_types=table_types,
                                          db_schema_filter_pattern=db_schema_filter_pattern)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_db_schemas(self,
                        catalog: Optional[str] = None,
@@ -111,22 +111,22 @@ class FlightSQLClient:
                        call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandGetDbSchemas(catalog=catalog,
                                             db_schema_filter_pattern=db_schema_filter_pattern)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_catalogs(self, call_options: Optional[CallOptions] = None):
-        return self._get_flight_info(flightsql.CommandGetCatalogs(), call_options)
+        return self.get_flight_info(flightsql.CommandGetCatalogs(), call_options)
 
     def get_primary_keys(self, table: TableRef, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandGetPrimaryKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_exported_keys(self, table: TableRef, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandGetExportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_imported_keys(self, table: TableRef, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandGetImportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_cross_reference(self, pk_table: TableRef, fk_table: TableRef, call_options: Optional[CallOptions] = None):
         cmd = flightsql.CommandGetCrossReference(
@@ -136,15 +136,15 @@ class FlightSQLClient:
                 pk_catalog=pk_table.catalog,
                 pk_db_schema=pk_table.db_schema,
                 pk_table=pk_table.table)
-        return self._get_flight_info(cmd, call_options)
+        return self.get_flight_info(cmd, call_options)
 
     def get_xdbc_type_info(self, data_type: Optional[int], call_options: Optional[CallOptions] = None):
-        return self._get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type), call_options)
+        return self.get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type), call_options)
 
     def prepare(self, query: str, call_options: Optional[CallOptions] = None) -> PreparedStatement:
         request = action(ActionTypeCreatePreparedStatement,
                          flightsql.ActionCreatePreparedStatementRequest(query=query))
-        options = self._merged_call_options(call_options)
+        options = self.flight_call_options(call_options)
         stream = self.client.do_action(request, options)
 
         flight_results = [r for r in stream]
@@ -165,27 +165,27 @@ class FlightSQLClient:
         return PreparedStatement(self.client, options, result.prepared_statement_handle)
 
     def get_table_types(self, call_options: Optional[CallOptions] = None):
-        return self._get_flight_info(flightsql.CommandGetTableTypes(), call_options)
+        return self.get_flight_info(flightsql.CommandGetTableTypes(), call_options)
 
     def get_sql_info(self, info: List[int], call_options: Optional[CallOptions] = None):
-        return self._get_flight_info(flightsql.CommandGetSqlInfo(info=info), call_options)
+        return self.get_flight_info(flightsql.CommandGetSqlInfo(info=info), call_options)
 
     @check_closed
     def do_get(self, ticket, call_options: Optional[CallOptions] = None):
-        options = self._merged_call_options(call_options)
+        options = self.flight_call_options(call_options)
         return self.client.do_get(ticket, options)
 
     @check_closed
     def do_put(self, desc, call_options: Optional[CallOptions] = None):
-        options = self._merged_call_options(call_options)
+        options = self.flight_call_options(call_options)
         return self.client.do_put(desc, pa.Table.from_arrays([]).schema, options)
 
     @check_closed
-    def _get_flight_info(self, command, call_options: Optional[CallOptions] = None):
-        options = self._merged_call_options(call_options)
+    def get_flight_info(self, command, call_options: Optional[CallOptions] = None):
+        options = self.flight_call_options(call_options)
         return self.client.get_flight_info(flight_descriptor(command), options)
 
-    def _merged_call_options(self, call_options: Optional[CallOptions] = None):
+    def flight_call_options(self, call_options: Optional[CallOptions] = None):
         headers = self.headers
         timeout = None
         read_options = None
@@ -208,45 +208,42 @@ class FlightSQLClient:
                                         read_options=read_options,
                                         write_options=write_options)
 
-    def _create_client(self,
-                       host: str = "localhost",
-                       port: int = 443,
-                       user: Optional[str] = None,
-                       password: Optional[str] = None,
-                       token: Optional[str] = None,
-                       insecure: Optional[bool] = None,
-                       disable_server_verification: Optional[bool] = None,
-                       metadata: Optional[Dict[str, str]] = None,
-                       features: Optional[Dict[str, str]] = None,
-                       **kwargs: Any) -> Tuple[flight.FlightClient,
-                                               List[Tuple[str, str]],
-                                               Dict[str, str]]:
+def create_flight_client(host: str = "localhost",
+                         port: int = 443,
+                         user: Optional[str] = None,
+                         password: Optional[str] = None,
+                         token: Optional[str] = None,
+                         insecure: Optional[bool] = None,
+                         disable_server_verification: Optional[bool] = None,
+                         metadata: Optional[Dict[str, str]] = None,
+                         features: Optional[Dict[str, str]] = None,
+                         **kwargs: Any) -> Tuple[flight.FlightClient,
+                                                 List[Tuple[str, str]],
+                                                 Dict[str, str]]:
+    protocol = 'tls'
+    client_args = {}
+    if insecure:
+        protocol = 'tcp'
+    elif disable_server_verification:
+        client_args['disable_server_verification'] = True
 
-        protocol = 'tls'
-        client_args = {}
-        if insecure:
-            protocol = 'tcp'
-        elif disable_server_verification:
-            client_args['disable_server_verification'] = True
+    url = f"grpc+{protocol}://{host}:{port}"
+    client = flight.FlightClient(url, **client_args)
 
-        url = f"grpc+{protocol}://{host}:{port}"
-        client = flight.FlightClient(url, **client_args)
+    headers = []
+    if user or password:
+        headers.append(client.authenticate_basic_token(user, password))
+    else:
+        headers.append((b'authorization', f"Bearer {token}".encode('utf-8')))
 
-        headers = []
-        if user or password:
-            headers.append(client.authenticate_basic_token(user, password))
-        else:
-            headers.append((b'authorization', f"Bearer {token}".encode('utf-8')))
+    if metadata:
+        for k, v in metadata.items():
+            headers.append((k.encode('utf-8'), v.encode('utf-8')))
 
-        if metadata:
-            for k, v in metadata.items():
-                headers.append((k.encode('utf-8'), v.encode('utf-8')))
+    if features is None:
+        features = {}
 
-        if features is None:
-            features = {}
-
-        return client, headers, features
-
+    return client, headers, features
 
 def flight_descriptor(inner: Any) -> flight.FlightDescriptor:
     any = any_pb2.Any()
