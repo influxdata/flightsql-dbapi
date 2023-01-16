@@ -29,6 +29,12 @@ class Cursor():
     def __iter__(self) -> Iterable[Sequence[Any]]:
         return iter(self._results)
 
+    def __enter__(self) -> "Cursor":
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
     @check_closed
     def close(self) -> None:
         self.closed = True
