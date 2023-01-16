@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple, List, Dict, Sequence, Iterable
+from typing import Any, Optional, Tuple, List, Dict, Sequence, Iterable, Union
 
 from pyarrow import Table, Schema
 import pyarrow.ipc as ipc
@@ -9,6 +9,8 @@ from flightsql.util import check_closed
 
 paramstyle = "qmark"
 apilevel = "2.0"
+
+ExecuteParams = Union[Tuple[Any, ...], List[Any]]
 
 def check_result(f):
     def g(self, *args, **kwargs):
@@ -40,7 +42,7 @@ class Cursor():
         self.closed = True
 
     @check_closed
-    def execute(self, query: str, params: Optional[Tuple[Any, ...]] = None) -> "Cursor":
+    def execute(self, query: str, params: Optional[ExecuteParams] = None) -> "Cursor":
         self.description = None
         self._results = []
 
@@ -58,7 +60,7 @@ class Cursor():
             self._results, self.description = dbapi_results(reader.read_all())
             return self
 
-    def executemany(self, query: str, param_seq: Sequence[Tuple[Any, ...]]) -> "Cursor":
+    def executemany(self, query: str, param_seq: Sequence[ExecuteParams]) -> "Cursor":
         self.description = None
         self._results = []
 

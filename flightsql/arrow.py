@@ -1,4 +1,4 @@
-from typing import Tuple, Any
+from typing import Tuple, Any, Union, List
 
 import pyarrow as pa
 from sqlalchemy import types
@@ -46,7 +46,7 @@ class ParameterRecordBuilder:
         bool: pa.bool_
     }
 
-    def __init__(self, values: Tuple[Any, ...]):
+    def __init__(self, values: Union[Tuple[Any, ...], List[Any]]):
         self.values = values
 
     def union_array_for_value(self, value: Any) -> pa.UnionArray:
