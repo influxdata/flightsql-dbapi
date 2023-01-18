@@ -253,5 +253,4 @@ def flight_descriptor(command: Any) -> flight.FlightDescriptor:
 def flight_action(action_type: str, body: Any) -> flight.Action:
     any = any_pb2.Any()
     any.Pack(body)
-    any.SerializeToString()
     return flight.Action(action_type, any.SerializeToString())
