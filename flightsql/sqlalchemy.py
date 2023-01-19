@@ -49,9 +49,6 @@ class FlightSQLDialect(default.DefaultDialect):
         flightsql.FLIGHT_SQL_SERVER_NAME,
         flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION,
         flightsql.FLIGHT_SQL_SERVER_READ_ONLY,
-        flightsql.SQL_KEYWORDS,
-        flightsql.SQL_NUMERIC_FUNCTIONS,
-        flightsql.SQL_STRING_FUNCTIONS,
         flightsql.SQL_IDENTIFIER_QUOTE_CHAR,
     ]
 
@@ -67,14 +64,6 @@ class FlightSQLDialect(default.DefaultDialect):
         super().initialize(connection)
 
         self.sql_info = connection.connection.flightsql_get_sql_info(self.sql_info_values)
-
-        # Build a list of reserved words from information gathered from the
-        # server. Apply the list to the identifier preparer.
-        keywords = [v.lower() for v in self.sql_info[flightsql.SQL_KEYWORDS]]
-        numeric_fns = [v.lower() for v in self.sql_info[flightsql.SQL_NUMERIC_FUNCTIONS]]
-        string_fns = [v.lower() for v in self.sql_info[flightsql.SQL_STRING_FUNCTIONS]]
-        all_words = set(keywords).union(numeric_fns).union(string_fns)
-        self.identifier_preparer.reserved_words = all_words
 
         # Set the quote character for identifiers.
         self.identifier_preparer.initial_quote = self.sql_info[flightsql.SQL_IDENTIFIER_QUOTE_CHAR]
@@ -120,9 +109,6 @@ class FlightSQLDialect(default.DefaultDialect):
     def get_view_names(self, connection, schema=None, **kwargs):
         return []
 
-class DataFusionIdentifierPreparer(compiler.IdentifierPreparer):
-    omit_schema = True
-
 class LiteralBindCompiler(compiler.SQLCompiler):
     # Force bind parameters to be replaced by their underlying value. IOx
     # doesn't support prepared statements so we'll need to do perform literal
@@ -157,8 +143,6 @@ class DataFusionDialect(FlightSQLDialect):
     supports_unicode_statements = True
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
-
-    preparer = DataFusionIdentifierPreparer
 
     def initialize(self, connection):
         super().initialize(connection)
