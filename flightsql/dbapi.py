@@ -1,13 +1,5 @@
-from typing import (
-    Any,
-    Optional,
-    Tuple,
-    List,
-    Dict,
-    Sequence,
-    Iterable,
-    Union,
-)
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+
 import pyarrow as pa
 import pyarrow.ipc as ipc
 from sqlalchemy import types
@@ -21,14 +13,17 @@ apilevel = "2.0"
 
 ExecuteParams = Union[Tuple[Any, ...], List[Any]]
 
+
 def check_result(f):
     def g(self, *args, **kwargs):
         if self._results is None:
-            raise Error('called before execute')
+            raise Error("called before execute")
         return f(self, *args, **kwargs)
+
     return g
 
-class Cursor():
+
+class Cursor:
     def __init__(self, client: FlightSQLClient):
         self.client = client
         self.arraysize = 1
@@ -121,7 +116,8 @@ class Cursor():
     def rowcount(self) -> int:
         return len(self._results)
 
-class Connection():
+
+class Connection:
     def __init__(self, client: FlightSQLClient, **kwargs):
         self.client = client
         self.closed = False
@@ -166,13 +162,13 @@ class Connection():
     @check_closed
     def flightsql_get_columns(self, table_name: str, schema: Optional[str] = None) -> List[Dict]:
         """Get the columns of a table using Flight SQL."""
-        info = self.client.get_tables(table_name_filter_pattern=table_name,
-                                      db_schema_filter_pattern=schema,
-                                      include_schema=True)
+        info = self.client.get_tables(
+            table_name_filter_pattern=table_name, db_schema_filter_pattern=schema, include_schema=True
+        )
         reader = self.client.do_get(info.endpoints[0].ticket)
         table = reader.read_all()
         # TODO(brett): Accessing the first element here without caution. Fix this.
-        table_schema = table.column('table_schema')[0].as_py()
+        table_schema = table.column("table_schema")[0].as_py()
         reader = ipc.open_stream(table_schema)
         return column_specs(reader.schema)
 
@@ -181,14 +177,14 @@ class Connection():
         """Get the names of all tables within the schema."""
         info = self.client.get_tables(db_schema_filter_pattern=schema)
         reader = self.client.do_get(info.endpoints[0].ticket)
-        return reader.read_pandas()['table_name'].tolist()
+        return reader.read_pandas()["table_name"].tolist()
 
     @check_closed
     def flightsql_get_schema_names(self) -> List[str]:
         """Get the names of all schemas."""
         info = self.client.get_db_schemas()
         reader = self.client.do_get(info.endpoints[0].ticket)
-        return reader.read_pandas()['db_schema_name'].tolist()
+        return reader.read_pandas()["db_schema_name"].tolist()
 
     @check_closed
     def flightsql_get_sql_info(self, info: List[int]) -> Dict[str, Any]:
@@ -196,7 +192,7 @@ class Connection():
         finfo = self.client.get_sql_info(info)
         reader = self.client.do_get(finfo.endpoints[0].ticket)
         values = reader.read_all().to_pylist()
-        return {v['info_name']: v['value'] for v in values}
+        return {v["info_name"]: v["value"] for v in values}
 
     @check_closed
     def flightsql_get_primary_keys(self, table: str, schema: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -216,21 +212,26 @@ class Connection():
     def features(self) -> Dict[str, str]:
         return self.client.features
 
+
 def connect(*args, **kwargs) -> Connection:
     return Connection(*args, **kwargs)
+
 
 def column_specs(schema: pa.Schema) -> List[Dict]:
     cols = []
     for i in range(0, len(schema)):
         field = schema.field(i)
-        cols.append({
-            "name": field.name,
-            "type": resolve_sql_type(field.type),
-            "default": None,
-            "comment": None,
-            "nullable": field.nullable,
-        })
+        cols.append(
+            {
+                "name": field.name,
+                "type": resolve_sql_type(field.type),
+                "default": None,
+                "comment": None,
+                "nullable": field.nullable,
+            }
+        )
     return cols
+
 
 def dbapi_results(table: pa.Table) -> Tuple[List, List]:
     """
@@ -242,6 +243,7 @@ def dbapi_results(table: pa.Table) -> Tuple[List, List]:
     descriptions = arrow_column_descriptions(table.schema)
     return df.values.tolist(), descriptions
 
+
 def arrow_column_descriptions(schema: pa.Schema) -> List[Tuple[str, Any]]:
     """Map Arrow schema fields to SQL types."""
     description = []
@@ -249,17 +251,26 @@ def arrow_column_descriptions(schema: pa.Schema) -> List[Tuple[str, Any]]:
         description.append((schema.names[i], resolve_sql_type(t)))
     return description
 
+
 def resolve_sql_type(t: pa.DataType):
     """Resolves an Arrow DataType value to a SQL type."""
 
-    if pa.types.is_timestamp(t): return types.TIMESTAMP
-    if pa.types.is_time(t): return types.TIME
-    if pa.types.is_date(t): return types.DATE
-    if pa.types.is_binary(t): return types.BINARY
-    if pa.types.is_boolean(t): return types.BOOLEAN
-    if pa.types.is_decimal(t): return types.DECIMAL
-    if pa.types.is_floating(t): return types.FLOAT
-    if pa.types.is_string(t): return types.TEXT
+    if pa.types.is_timestamp(t):
+        return types.TIMESTAMP
+    if pa.types.is_time(t):
+        return types.TIME
+    if pa.types.is_date(t):
+        return types.DATE
+    if pa.types.is_binary(t):
+        return types.BINARY
+    if pa.types.is_boolean(t):
+        return types.BOOLEAN
+    if pa.types.is_decimal(t):
+        return types.DECIMAL
+    if pa.types.is_floating(t):
+        return types.FLOAT
+    if pa.types.is_string(t):
+        return types.TEXT
 
     if pa.types.is_signed_integer(t) and not pa.types.is_int64(t):
         return types.INTEGER
@@ -276,6 +287,7 @@ def resolve_sql_type(t: pa.DataType):
     # sure what type we should fall back to.
     return types.BLOB
 
+
 class ParameterRecordBuilder:
     """
     Builds a PyArrow RecordBatch from a list of parameters for prepared statements.
@@ -286,13 +298,7 @@ class ParameterRecordBuilder:
     """
 
     union_positions = {t: idx for idx, t in enumerate([int, float, str, bytes, bool])}
-    arrow_types = {
-        int: pa.int64,
-        float: pa.float64,
-        str: pa.utf8,
-        bytes: pa.binary,
-        bool: pa.bool_
-    }
+    arrow_types = {int: pa.int64, float: pa.float64, str: pa.utf8, bytes: pa.binary, bool: pa.bool_}
 
     def __init__(self, values: ExecuteParams):
         self.values = values
@@ -301,7 +307,7 @@ class ParameterRecordBuilder:
         """Builds a PyArrow UnionArray around a value."""
         pytype = type(value)
         if pytype not in self.union_positions:
-            raise Error(f"unable to map \"{pytype.__name__}\" type to PyArrow datatype")
+            raise Error(f'unable to map "{pytype.__name__}" type to PyArrow datatype')
 
         children = []
         type_id = -1
@@ -314,9 +320,7 @@ class ParameterRecordBuilder:
                 values = []
             children.append(pa.array(values, type=arrow_type))
 
-        return pa.UnionArray.from_dense(pa.array([type_id], type=pa.int8()),
-                                        pa.array([0], type=pa.int32()),
-                                        children)
+        return pa.UnionArray.from_dense(pa.array([type_id], type=pa.int8()), pa.array([0], type=pa.int32()), children)
 
     def build_record(self) -> pa.RecordBatch:
         """

@@ -35,6 +35,8 @@ lint = [
     'pyproject-flake8'
 ]
 dev = [
+    "black",
+    "isort",
     "flightsql-dbapi[test,lint]"
 ]
 
@@ -44,12 +46,20 @@ dev = [
 [project.entry-points."sqlalchemy.dialects"]
 datafusion = 'flightsql.sqlalchemy:DataFusionDialect'
 
+[tool.black]
+line-length = 120
+extend-exclude = "(.*_pb2.py|.*_pb2.pyi)"
+
+[tool.isort]
+profile = "black"
+extend_skip_glob = ["*_pb2.py", "*_pb2.pyi"]
+
 [tool.flake8]
 statistics = true
 exit-zero = true
 max-line-length = 140
 max-complexity = 15
-extend-ignore = ["E701", "E302", "E305"]
+extend-ignore = ["E203"]
 exclude = """
     .git
     __pycache__

@@ -22,8 +22,18 @@ proto:
 		--python_out=. \
 		flightsql/flightsql.proto
 
+.PHONY: fmt
+fmt:
+	$(PYTHON3) -m isort flightsql/ tests/
+	$(PYTHON3) -m black flightsql/ tests/
+
+.PHONY: fmt-check
+fmt-check:
+	$(PYTHON3) -m isort --check flightsql/ tests/
+	$(PYTHON3) -m black --check flightsql/ tests/
+
 .PHONY: lint
-lint: mypy flake8
+lint: mypy flake8 fmt-check
 
 .PHONY: flake8
 flake8:

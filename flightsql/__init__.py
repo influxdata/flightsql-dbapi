@@ -1,11 +1,8 @@
-from flightsql.dbapi import (
-    paramstyle,
-    apilevel,
-    connect,
-)
+from flightsql.client import FlightSQLClient
+from flightsql.dbapi import apilevel, connect, paramstyle
 from flightsql.exceptions import (
-    DataError,
     DatabaseError,
+    DataError,
     Error,
     IntegrityError,
     InterfaceError,
@@ -16,13 +13,10 @@ from flightsql.exceptions import (
     Warning,
 )
 
-from flightsql.client import FlightSQLClient
-
 __all__ = [
     "connect",
     "apilevel",
     "paramstyle",
-
     "DataError",
     "DatabaseError",
     "Error",
@@ -33,7 +27,6 @@ __all__ = [
     "OperationalError",
     "ProgrammingError",
     "Warning",
-
     "FlightSQLClient",
     "FlightSQLClientCallOptions",
 ]

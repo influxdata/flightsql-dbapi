@@ -2,12 +2,9 @@ import pyarrow as pa
 from pytest import raises
 from sqlalchemy.sql import sqltypes
 
+from flightsql.dbapi import ParameterRecordBuilder, dbapi_results, resolve_sql_type
 from flightsql.exceptions import Error
-from flightsql.dbapi import (
-    dbapi_results,
-    resolve_sql_type,
-    ParameterRecordBuilder,
-)
+
 
 def test_parameter_record_builder():
     params = [20, "hello", 3.14, b"data", True]
@@ -22,6 +19,7 @@ def test_parameter_record_builder():
     assert record.column(3).to_pylist() == [b"data"]
     assert record.column(4).to_pylist() == [True]
 
+
 def test_parameter_record_builder_unsupported_type():
     class Something:
         pass
@@ -33,13 +31,13 @@ def test_parameter_record_builder_unsupported_type():
     assert str(err.value) == 'unable to map "Something" type to PyArrow datatype'
     assert err.type == Error
 
+
 def test_dbapi_results():
     days = pa.array([1, 12, 17, 23, 28], type=pa.int8())
     months = pa.array([1, 3, 5, 7, 1], type=pa.int8())
     years = pa.array([1990, 2000, 1995, 2000, 1995], type=pa.int16())
     names = pa.array(["john", "jim", "jack", "jake", "jerry"], type=pa.string())
-    table = pa.table([days, months, years, names],
-                     names=["days", "months", "years", "names"])
+    table = pa.table([days, months, years, names], names=["days", "months", "years", "names"])
     values, descriptions = dbapi_results(table)
 
     assert values == [
@@ -50,16 +48,17 @@ def test_dbapi_results():
         [28, 1, 1995, "jerry"],
     ]
     assert descriptions == [
-        ('days', sqltypes.INTEGER),
-        ('months', sqltypes.INTEGER),
-        ('years', sqltypes.INTEGER),
-        ('names', sqltypes.TEXT),
+        ("days", sqltypes.INTEGER),
+        ("months", sqltypes.INTEGER),
+        ("years", sqltypes.INTEGER),
+        ("names", sqltypes.TEXT),
     ]
+
 
 def test_resolve_sql_type():
     cases = [
-        (pa.timestamp('ns'), sqltypes.TIMESTAMP),
-        (pa.time64('ns'), sqltypes.TIME),
+        (pa.timestamp("ns"), sqltypes.TIMESTAMP),
+        (pa.time64("ns"), sqltypes.TIME),
         (pa.date64(), sqltypes.DATE),
         (pa.decimal128(5, 10), sqltypes.DECIMAL),
         (pa.string(), sqltypes.TEXT),

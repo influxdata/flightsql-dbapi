@@ -1,25 +1,23 @@
 import pytest
-from . import integration
-from sqlalchemy import (
-    create_engine,
-    select,
-    Column,
-    String,
-    Integer,
-)
+from sqlalchemy import Column, Integer, String, create_engine, select
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy.orm import Session, declarative_base
 from sqlalchemy.schema import MetaData, Table
+
 import flightsql.flightsql_pb2 as flightsql
 from flightsql.sqlalchemy import FEATURE_PREPARED_STATEMENTS
 
+from . import integration
+
+
 def new_sqlalchemy_engine(features={}):
     host, port = integration.host_port()
-    query = {'insecure': 'true'}
+    query = {"insecure": "true"}
     for k, v in features.items():
-        query[f'feature-{k}'] = v
+        query[f"feature-{k}"] = v
     url = URL.create(drivername="datafusion+flightsql", host=host, port=port, query=query)
     return create_engine(url)
+
 
 @pytest.mark.skipif(integration.is_disabled(), reason=integration.disabled_message)
 def test_integration_dialect_configuration():
@@ -28,8 +26,9 @@ def test_integration_dialect_configuration():
     engine.connect()
     info = engine.dialect.sql_info
     assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
-    assert info[flightsql.FLIGHT_SQL_SERVER_NAME] == 'db_name'
-    assert info[flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION] == '11.0.0-SNAPSHOT'
+    assert info[flightsql.FLIGHT_SQL_SERVER_NAME] == "db_name"
+    assert info[flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION] == "11.0.0-SNAPSHOT"
+
 
 @pytest.mark.skipif(integration.is_disabled(), reason=integration.disabled_message)
 def test_integration_dialect_basic_orm():
@@ -39,10 +38,10 @@ def test_integration_dialect_basic_orm():
 
     # Connect to ensure we're using the literal binding compiler.
     engine.connect()
-    assert engine.dialect.statement_compiler.__name__ == 'LiteralBindCompiler'
+    assert engine.dialect.statement_compiler.__name__ == "LiteralBindCompiler"
 
     class Record(base):
-        __tablename__ = Table('intTable', metadata, autoload=True, autoload_with=engine)
+        __tablename__ = Table("intTable", metadata, autoload=True, autoload_with=engine)
         id = Column(Integer, primary_key=True)
         key_name = Column(Integer, name="keyName")
         value = Column(String)
@@ -53,18 +52,19 @@ def test_integration_dialect_basic_orm():
     assert [r.key_name for r in results] == ["one", "zero", "negative one"]
     assert [r.value for r in results] == [1, 0, -1]
 
+
 @pytest.mark.skipif(integration.is_disabled(), reason=integration.disabled_message)
 def test_integration_dialect_basic_orm_with_prepared_statements():
-    engine = new_sqlalchemy_engine(features={FEATURE_PREPARED_STATEMENTS: 'on'})
+    engine = new_sqlalchemy_engine(features={FEATURE_PREPARED_STATEMENTS: "on"})
     base = declarative_base()
     metadata = MetaData()
 
     # Connect to ensure we're using the default compiler.
     engine.connect()
-    assert engine.dialect.statement_compiler.__name__ == 'SQLCompiler'
+    assert engine.dialect.statement_compiler.__name__ == "SQLCompiler"
 
     class Record(base):
-        __tablename__ = Table('intTable', metadata, autoload=True, autoload_with=engine)
+        __tablename__ = Table("intTable", metadata, autoload=True, autoload_with=engine)
         id = Column(Integer, primary_key=True)
         key_name = Column(Integer, name="keyName")
         value = Column(String)

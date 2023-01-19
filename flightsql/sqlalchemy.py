@@ -1,40 +1,43 @@
-from typing import Any, List, Dict
-from sqlalchemy import pool
-from sqlalchemy.engine import reflection, default, URL
-from sqlalchemy.sql import compiler
-from sqlalchemy.dialects import registry
+from typing import Any, Dict, List
 
-from flightsql.client import FlightSQLClient
+from sqlalchemy import pool
+from sqlalchemy.dialects import registry
+from sqlalchemy.engine import URL, default, reflection
+from sqlalchemy.sql import compiler
+
 import flightsql.flightsql_pb2 as flightsql
+from flightsql.client import FlightSQLClient
 
 feature_prefix = "feature-"
 
-FEATURE_PREPARED_STATEMENTS = 'sqlalchemy-prepared-statements'
+FEATURE_PREPARED_STATEMENTS = "sqlalchemy-prepared-statements"
+
 
 def client_from_url(url: URL) -> FlightSQLClient:
-    fields = url.translate_connect_args(username='user')
+    fields = url.translate_connect_args(username="user")
 
     metadata = {k.lower(): v for k, v in url.query.items()}
-    insecure = bool(metadata.pop('insecure', None))
-    disable_server_verification = bool(metadata.pop('disable_server_verification', None))
-    token = metadata.pop('token', None)
+    insecure = bool(metadata.pop("insecure", None))
+    disable_server_verification = bool(metadata.pop("disable_server_verification", None))
+    token = metadata.pop("token", None)
 
     features = {}
     for k in list(metadata.keys()):
         if k.startswith(feature_prefix):
-            features[k[len(feature_prefix):]] = metadata.pop(k)
+            features[k[len(feature_prefix) :]] = metadata.pop(k)
 
     return FlightSQLClient(
-        host=fields['host'],
-        port=fields['port'],
-        user=fields.pop('user', None),
-        password=fields.pop('password', None),
+        host=fields["host"],
+        port=fields["port"],
+        user=fields.pop("user", None),
+        password=fields.pop("password", None),
         token=token,
         insecure=insecure,
         disable_server_verification=disable_server_verification,
         metadata=metadata,
         features=features,
     )
+
 
 class FlightSQLDialect(default.DefaultDialect):
     """
@@ -55,6 +58,7 @@ class FlightSQLDialect(default.DefaultDialect):
     @classmethod
     def dbapi(cls):
         import flightsql as dbapi
+
         return dbapi
 
     def connect(self, *args, **kwargs):
@@ -79,7 +83,7 @@ class FlightSQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_columns(self, connection, table, schema=None, **kwargs):
-        return (connection.connection.flightsql_get_columns(table, schema))
+        return connection.connection.flightsql_get_columns(table, schema)
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kwargs):
@@ -99,15 +103,16 @@ class FlightSQLDialect(default.DefaultDialect):
     def get_pk_constraint(self, connection, table_name, schema=None, **kwargs):
         columns = connection.connection.flightsql_get_primary_keys(table_name, schema=schema)
         if len(columns) == 0:
-            return {'constrained_columns': [], 'name': None}
-        names = [v['column_name'] for v in columns]
-        return {'constrained_columns': names, 'name': columns[0]['key_name']}
+            return {"constrained_columns": [], "name": None}
+        names = [v["column_name"] for v in columns]
+        return {"constrained_columns": names, "name": columns[0]["key_name"]}
 
     def get_foreign_keys(self, connection, table_name, schema=None, **kwargs):
         return []
 
     def get_view_names(self, connection, schema=None, **kwargs):
         return []
+
 
 class LiteralBindCompiler(compiler.SQLCompiler):
     # Force bind parameters to be replaced by their underlying value. IOx
@@ -116,6 +121,7 @@ class LiteralBindCompiler(compiler.SQLCompiler):
     # TODO: Remove this when we're able to support prepared statements.
     def visit_bindparam(self, bindparam, within_columns_clause=False, literal_binds=False, **kwargs):
         return super().visit_bindparam(bindparam, within_columns_clause, True, **kwargs)
+
 
 class DataFusionDialect(FlightSQLDialect):
     """
@@ -131,7 +137,7 @@ class DataFusionDialect(FlightSQLDialect):
 
     name = "datafusion"
 
-    paramstyle = 'qmark'
+    paramstyle = "qmark"
     poolclass = pool.SingletonThreadPool
     returns_unicode_strings = True
     supports_default_values = False
@@ -152,9 +158,10 @@ class DataFusionDialect(FlightSQLDialect):
         # attempt to create a prepared statement if the upstream server isn't
         # expected to support it.
         prepared_statements_enabled = connection.connection.features.get(FEATURE_PREPARED_STATEMENTS)
-        if prepared_statements_enabled != 'on':
+        if prepared_statements_enabled != "on":
             self.statement_compiler = LiteralBindCompiler
         else:
             self.statement_compiler = compiler.SQLCompiler
+
 
 registry.register("datafusion.flightsql", "flightsql.sqlalchemy", "DataFusionDialect")
