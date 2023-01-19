@@ -57,6 +57,8 @@ class FlightSQLDialect(default.DefaultDialect):
         super().initialize(connection)
 
         sql_info = connection.connection.flightsql_get_sql_info([
+            flightsql.FLIGHT_SQL_SERVER_NAME,
+            flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION,
             flightsql.FLIGHT_SQL_SERVER_READ_ONLY,
         ])
         read_only = sql_info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY]

@@ -28,6 +28,8 @@ def test_integration_dialect_configuration():
     engine.connect()
     info = engine.dialect.sql_info
     assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
+    assert info[flightsql.FLIGHT_SQL_SERVER_NAME] == 'db_name'
+    assert info[flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION] == '11.0.0-SNAPSHOT'
 
 @pytest.mark.skipif(integration.is_disabled(), reason=integration.disabled_message)
 def test_integration_dialect_basic_orm():
