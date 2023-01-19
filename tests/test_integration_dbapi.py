@@ -1,8 +1,7 @@
 import pytest
 import sqlalchemy.sql.sqltypes as sqltypes
 
-import flightsql.flightsql_pb2 as flightsql
-import flightsql.sqlalchemy
+import flightsql.flightsql_pb2 as flightsql_pb2
 from flightsql.dbapi import connect
 
 from . import integration
@@ -60,16 +59,16 @@ def test_integration_sql_info():
     # codes to be requested.
     info = conn.flightsql_get_sql_info(
         [
-            flightsql.FLIGHT_SQL_SERVER_NAME,
-            flightsql.FLIGHT_SQL_SERVER_VERSION,
-            flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION,
-            flightsql.FLIGHT_SQL_SERVER_READ_ONLY,
+            flightsql_pb2.FLIGHT_SQL_SERVER_NAME,
+            flightsql_pb2.FLIGHT_SQL_SERVER_VERSION,
+            flightsql_pb2.FLIGHT_SQL_SERVER_ARROW_VERSION,
+            flightsql_pb2.FLIGHT_SQL_SERVER_READ_ONLY,
         ]
     )
-    assert info[flightsql.FLIGHT_SQL_SERVER_NAME] == "db_name"
-    assert info[flightsql.FLIGHT_SQL_SERVER_VERSION] == "sqlite 3"
-    assert info[flightsql.FLIGHT_SQL_SERVER_ARROW_VERSION] == "11.0.0-SNAPSHOT"
-    assert info[flightsql.FLIGHT_SQL_SERVER_READ_ONLY] is False
+    assert info[flightsql_pb2.FLIGHT_SQL_SERVER_NAME] == "db_name"
+    assert info[flightsql_pb2.FLIGHT_SQL_SERVER_VERSION] == "sqlite 3"
+    assert info[flightsql_pb2.FLIGHT_SQL_SERVER_ARROW_VERSION] == "11.0.0-SNAPSHOT"
+    assert info[flightsql_pb2.FLIGHT_SQL_SERVER_READ_ONLY] is False
     conn.close()
 
 
