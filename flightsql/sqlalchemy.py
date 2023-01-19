@@ -121,7 +121,6 @@ class FlightSQLDialect(default.DefaultDialect):
         return []
 
 class DataFusionIdentifierPreparer(compiler.IdentifierPreparer):
-    reserved_words = []
     omit_schema = True
 
 class LiteralBindCompiler(compiler.SQLCompiler):
