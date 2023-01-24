@@ -111,10 +111,15 @@ class FlightSQLClient:
         self.closed = False
 
     def close(self):
+        """Close the client."""
         self.closed = True
         self.client.close()
 
     def execute(self, query: str, call_options: Optional[FlightSQLCallOptions] = None):
+        """
+        Execute a query. Returns a `flight.FlightInfo` object to specify the
+        retrieval location for Arrow data.
+        """
         return self._get_flight_info(flightsql.CommandStatementQuery(query=query), call_options)
 
     def execute_update(self, query: str, call_options: Optional[FlightSQLCallOptions] = None):
