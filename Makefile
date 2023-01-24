@@ -6,7 +6,7 @@ PYTHON3=$(BIN)/python3
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build:
+build: venv
 	$(PYTHON3) -m build
 
 .PHONY: clean
