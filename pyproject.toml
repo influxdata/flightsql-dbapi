@@ -30,10 +30,11 @@ test = [
 ]
 lint = [
     "black",
-    "isort",
     "flake8",
+    "isort",
     "mypy",
     "pyproject-flake8",
+    "toml-cli",
     "types-protobuf",
 ]
 dev = [
