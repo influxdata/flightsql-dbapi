@@ -34,6 +34,7 @@ fmt-check:
 
 .PHONY: lint
 lint: mypy flake8 fmt-check
+	VENV_BIN=$(BIN) scripts/lint-version
 
 .PHONY: flake8
 flake8:

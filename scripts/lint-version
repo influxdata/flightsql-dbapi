@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+PYPROJECT_VERSION=$("${VENV_BIN}/toml" get --toml-path pyproject.toml project.version)
+
+FLIGHTSQL_VERSION=$("${VENV_BIN}/python3" <(cat <<EOF
+from flightsql import __version__
+print(__version__)
+EOF
+))
+
+[[ "$PYPROJECT_VERSION" == "$FLIGHTSQL_VERSION" ]] || (echo "Versions in pyproject.toml and flightsql/__init__.py don't agree." && exit 1)
