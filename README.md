@@ -22,7 +22,7 @@ to be publishing it as a package on PyPi yet. However, you are free to install
 it directly from GitHub until we do start publishing releases.
 
 ```shell
-$ pip install git+https://github.com/influxdata/flightsql-dbapi.git#egg=flightsql-dbapi
+$ pip3 install flightsql-dbapi
 ```
 
 ## Usage
