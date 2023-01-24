@@ -17,10 +17,6 @@ layer and for metadata discovery.
 
 ## Installation
 
-`flightsql-dbapi` is in its early days so the APIs haven't settled enough for us
-to be publishing it as a package on PyPi yet. However, you are free to install
-it directly from GitHub until we do start publishing releases.
-
 ```shell
 $ pip3 install flightsql-dbapi
 ```
