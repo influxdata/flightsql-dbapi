@@ -17,26 +17,27 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    'sqlalchemy<2.0',
-    'pyarrow>=5.0.0',
-    'protobuf>=4.21.0'
+    "sqlalchemy<2.0",
+    "pyarrow>=5.0.0",
+    "protobuf>=4.21.0"
 ]
 
 [project.optional-dependencies]
 test = [
-    'pandas',
-    'pytest',
-    'pytest-cov[all]'
+    "pandas",
+    "pytest",
+    "pytest-cov[all]"
 ]
 lint = [
-    'mypy',
-    'types-protobuf',
-    'flake8',
-    'pyproject-flake8'
-]
-dev = [
     "black",
     "isort",
+    "flake8",
+    "mypy",
+    "pyproject-flake8",
+    "types-protobuf",
+]
+dev = [
+    "build",
     "flightsql-dbapi[test,lint]"
 ]
 
@@ -44,7 +45,7 @@ dev = [
 "Homepage" = "https://github.com/brettbuddin/flightsql-dbapi"
 
 [project.entry-points."sqlalchemy.dialects"]
-datafusion = 'flightsql.sqlalchemy:DataFusionDialect'
+datafusion = "flightsql.sqlalchemy:DataFusionDialect"
 
 [tool.black]
 line-length = 120

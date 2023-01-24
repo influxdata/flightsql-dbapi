@@ -1,5 +1,3 @@
-import importlib.metadata
-
 from flightsql.client import FlightSQLClient
 from flightsql.dbapi import apilevel, connect, paramstyle
 from flightsql.exceptions import (
@@ -15,7 +13,7 @@ from flightsql.exceptions import (
     Warning,
 )
 
-__version__ = importlib.metadata.version("flightsql-dbapi")
+__version__ = "0.0.1"
 
 __all__ = [
     "connect",
