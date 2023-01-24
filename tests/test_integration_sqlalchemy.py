@@ -3,9 +3,10 @@ from sqlalchemy import Column, Integer, String, create_engine, select
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import Session, declarative_base
 from sqlalchemy.schema import MetaData, Table
+from sqlalchemy.sql import compiler
 
 import flightsql.flightsql_pb2 as flightsql
-from flightsql.sqlalchemy import FEATURE_PREPARED_STATEMENTS
+from flightsql.sqlalchemy import FEATURE_PREPARED_STATEMENTS, LiteralBindCompiler
 
 from . import integration
 
@@ -15,7 +16,7 @@ def new_sqlalchemy_engine(features={}):
     query = {"insecure": "true"}
     for k, v in features.items():
         query[f"feature-{k}"] = v
-    url = URL.create(drivername="datafusion+flightsql", host=host, port=port, query=query)
+    url = URL.create(drivername="datafusion+flightsql", host=host, port=int(port), query=query)
     return create_engine(url)
 
 
@@ -38,7 +39,7 @@ def test_integration_dialect_basic_orm():
 
     # Connect to ensure we're using the literal binding compiler.
     engine.connect()
-    assert engine.dialect.statement_compiler.__name__ == "LiteralBindCompiler"
+    assert engine.dialect.statement_compiler == LiteralBindCompiler
 
     class Record(base):
         __tablename__ = Table("intTable", metadata, autoload=True, autoload_with=engine)
@@ -61,7 +62,7 @@ def test_integration_dialect_basic_orm_with_prepared_statements():
 
     # Connect to ensure we're using the default compiler.
     engine.connect()
-    assert engine.dialect.statement_compiler.__name__ == "SQLCompiler"
+    assert engine.dialect.statement_compiler == compiler.SQLCompiler
 
     class Record(base):
         __tablename__ = Table("intTable", metadata, autoload=True, autoload_with=engine)

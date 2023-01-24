@@ -141,10 +141,10 @@ def test_integration_prepared_statement():
 
         query = 'select * from intTable where "keyName" = ?'
         cursor = conn.execute(query, ("eight",))
-        cursor.fetchone()[1:] == ["eight", 8, None]
+        assert (cursor.fetchone() or [])[1:] == ["eight", 8, None]
         cursor = conn.execute(query, ("nine",))
-        cursor.fetchone()[1:] == ["nine", 9, None]
+        assert (cursor.fetchone() or [])[1:] == ["nine", 9, None]
         cursor = conn.execute(query, ("ten",))
-        cursor.fetchone()[1:] == ["ten", 10, None]
+        assert (cursor.fetchone() or [])[1:] == ["ten", 10, None]
 
         conn.execute('delete from intTable where "keyName" in ("eight", "nine", "ten")')

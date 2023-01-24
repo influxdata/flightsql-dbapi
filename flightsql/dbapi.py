@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 import pyarrow as pa
 import pyarrow.ipc as ipc
@@ -32,7 +32,7 @@ class Cursor:
         self._results: List[Sequence[Any]] = []
 
     @check_closed
-    def __iter__(self) -> Iterable[Sequence[Any]]:
+    def __iter__(self) -> Iterator[Sequence[Any]]:
         return iter(self._results)
 
     def __enter__(self) -> "Cursor":
@@ -187,7 +187,7 @@ class Connection:
         return reader.read_pandas()["db_schema_name"].tolist()
 
     @check_closed
-    def flightsql_get_sql_info(self, info: List[int]) -> Dict[str, Any]:
+    def flightsql_get_sql_info(self, info: List[int]) -> Dict[int, Any]:
         """Get metadata about the server and its SQL features."""
         finfo = self.client.get_sql_info(info)
         reader = self.client.do_get(finfo.endpoints[0].ticket)

@@ -55,6 +55,16 @@ extend-exclude = "(.*_pb2.py|.*_pb2.pyi)"
 profile = "black"
 extend_skip_glob = ["*_pb2.py", "*_pb2.pyi"]
 
+[tool.pyright]
+exclude = [
+    "**/__pycache__",
+    ".git",
+    "venv",
+    "build",
+    "flightsql/*_pb2.py",
+    "flightsql/*_pb2.pyi",
+]
+
 [tool.flake8]
 statistics = true
 exit-zero = true
