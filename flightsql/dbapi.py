@@ -213,8 +213,9 @@ class Connection:
         return self.client.features
 
 
-def connect(*args, **kwargs) -> Connection:
-    return Connection(*args, **kwargs)
+def connect(client: FlightSQLClient, **kwargs) -> Connection:
+    """Connects to a Flight SQL server."""
+    return Connection(client, **kwargs)
 
 
 def column_specs(schema: pa.Schema) -> List[Dict]:

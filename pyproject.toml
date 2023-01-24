@@ -38,6 +38,7 @@ lint = [
 ]
 dev = [
     "build",
+    "pdoc",
     "flightsql-dbapi[test,lint]"
 ]
 

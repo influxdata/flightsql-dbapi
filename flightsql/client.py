@@ -10,19 +10,36 @@ from pyarrow.ipc import IpcReadOptions, IpcWriteOptions
 import flightsql.flightsql_pb2 as flightsql
 from flightsql.util import check_closed
 
-ActionTypeCreatePreparedStatement = "CreatePreparedStatement"
-ActionTypeClosePreparedStatement = "ClosePreparedStatement"
-
 
 @dataclass
 class TableRef:
+    """Reference information for a specific table."""
+
     catalog: Optional[str] = None
+    """
+    Specifies the catalog the table belongs to. `None` means any catalog and
+    an empty string means a table without a catalog.
+    """
+
     db_schema: Optional[str] = None
+    """
+    Specifies the DB schema the table belongs to. `None` means any DB schema and
+    an empty string means a table without a DB schema.
+    """
+
     table: str = ""
+    """
+    Name of the table.
+    """
 
 
 @dataclass
 class FlightSQLCallOptions:
+    """
+    Collection of options to send with the RPC. These are converted to
+    `flight.CallOptions` when the RPC is invoked.
+    """
+
     timeout: Optional[float] = None
     headers: Optional[List[Tuple[bytes, bytes]]] = None
     write_options: Optional[IpcWriteOptions] = None
@@ -30,6 +47,12 @@ class FlightSQLCallOptions:
 
 
 class PreparedStatement:
+    """
+    Scoped prepared statement execution.
+
+    Closing the `PreparedStatement` will invoke a close action with server.
+    """
+
     def __init__(self, client: flight.FlightClient, options: flight.FlightCallOptions, handle: bytes):
         self.client = client
         self.options = options
@@ -46,6 +69,9 @@ class PreparedStatement:
 
     @check_closed
     def execute(self, binding: pa.RecordBatch) -> flight.FlightInfo:
+        """
+        Apply parameter bindings to the prepared statement and execute the query.
+        """
         cmd = flightsql.CommandPreparedStatementQuery(prepared_statement_handle=self.handle)
         desc = flight_descriptor(cmd)
 
@@ -59,8 +85,11 @@ class PreparedStatement:
 
     @check_closed
     def close(self) -> None:
+        """
+        Close the prepared statement.
+        """
         request = flight_action(
-            ActionTypeClosePreparedStatement,
+            "ClosePreparedStatement",
             flightsql.ActionClosePreparedStatementRequest(prepared_statement_handle=self.handle),
         )
         self.client.do_action(request, self.options)
@@ -68,6 +97,12 @@ class PreparedStatement:
 
 
 class FlightSQLClient:
+    """
+    Wrapper around a `flight.FlightClient` that implements the Flight SQL
+    protocol. This client should be retired when/if pyarrow receives an official
+    Flight SQL client.
+    """
+
     def __init__(self, *args, features: Optional[Dict[str, str]] = None, **kwargs):
         client, headers = create_flight_client(*args, **kwargs)
         self.client = client
@@ -80,12 +115,13 @@ class FlightSQLClient:
         self.client.close()
 
     def execute(self, query: str, call_options: Optional[FlightSQLCallOptions] = None):
-        return self.get_flight_info(flightsql.CommandStatementQuery(query=query), call_options)
+        return self._get_flight_info(flightsql.CommandStatementQuery(query=query), call_options)
 
     def execute_update(self, query: str, call_options: Optional[FlightSQLCallOptions] = None):
+        """Execute an update query and return the number of updated rows."""
         cmd = flightsql.CommandStatementUpdate(query=query)
         desc = flight_descriptor(cmd)
-        writer, reader = self.do_put(desc, call_options)
+        writer, reader = self._do_put(desc, call_options)
         result = reader.read()
         writer.close()
 
@@ -104,6 +140,10 @@ class FlightSQLClient:
         db_schema_filter_pattern: Optional[str] = None,
         call_options: Optional[FlightSQLCallOptions] = None,
     ):
+        """
+        Requests a list of tables and returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetTables(
             catalog=catalog,
             include_schema=include_schema,
@@ -111,7 +151,7 @@ class FlightSQLClient:
             table_types=table_types,
             db_schema_filter_pattern=db_schema_filter_pattern,
         )
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_db_schemas(
         self,
@@ -119,27 +159,53 @@ class FlightSQLClient:
         db_schema_filter_pattern: Optional[str] = None,
         call_options: Optional[FlightSQLCallOptions] = None,
     ):
+        """
+        Requests a list of schemas and returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetDbSchemas(catalog=catalog, db_schema_filter_pattern=db_schema_filter_pattern)
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_catalogs(self, call_options: Optional[FlightSQLCallOptions] = None):
-        return self.get_flight_info(flightsql.CommandGetCatalogs(), call_options)
+        """
+        Requests a list of catalogs and returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
+        return self._get_flight_info(flightsql.CommandGetCatalogs(), call_options)
 
     def get_primary_keys(self, table: TableRef, call_options: Optional[FlightSQLCallOptions] = None):
+        """
+        Requests a list of primary keys and returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetPrimaryKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_exported_keys(self, table: TableRef, call_options: Optional[FlightSQLCallOptions] = None):
+        """
+        Requests a description of foreign keys that reference primary keys in
+        the given table. Returns a `flight.FlightInfo` object to specify
+        the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetExportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_imported_keys(self, table: TableRef, call_options: Optional[FlightSQLCallOptions] = None):
+        """
+        Requests a description of foreign keys for the given table. Returns a
+        `flight.FlightInfo` object to specify the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetImportedKeys(catalog=table.catalog, db_schema=table.db_schema, table=table.table)
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_cross_reference(
         self, pk_table: TableRef, fk_table: TableRef, call_options: Optional[FlightSQLCallOptions] = None
     ):
+        """
+        Requests a description of foreign keys in the `fk_table` that reference
+        the primary keys in the `pk_table`. Returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
         cmd = flightsql.CommandGetCrossReference(
             fk_catalog=fk_table.catalog,
             fk_db_schema=fk_table.db_schema,
@@ -148,16 +214,26 @@ class FlightSQLClient:
             pk_db_schema=pk_table.db_schema,
             pk_table=pk_table.table,
         )
-        return self.get_flight_info(cmd, call_options)
+        return self._get_flight_info(cmd, call_options)
 
     def get_xdbc_type_info(self, data_type: Optional[int], call_options: Optional[FlightSQLCallOptions] = None):
-        return self.get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type), call_options)
+        """
+        Requests information about all data types supported or a specific data
+        type. Returns a `flight.FlightInfo` object to specify the
+        retrieval location for Arrow data.
+        """
+        return self._get_flight_info(flightsql.CommandGetXdbcTypeInfo(data_type=data_type), call_options)
 
     def prepare(self, query: str, call_options: Optional[FlightSQLCallOptions] = None) -> PreparedStatement:
-        request = flight_action(
-            ActionTypeCreatePreparedStatement, flightsql.ActionCreatePreparedStatementRequest(query=query)
-        )
-        options = self.flight_call_options(call_options)
+        """
+        Create a `PreparedStatement` for a given query.
+
+        The resulting `PreparedStatement` should be closed when it is no longer
+        needed. This can be done via an explicity `close()` or by using the
+        `with` statement.
+        """
+        request = flight_action("CreatePreparedStatement", flightsql.ActionCreatePreparedStatementRequest(query=query))
+        options = self._flight_call_options(call_options)
         stream = self.client.do_action(request, options)
 
         flight_results = [r for r in stream]
@@ -178,27 +254,40 @@ class FlightSQLClient:
         return PreparedStatement(self.client, options, result.prepared_statement_handle)
 
     def get_table_types(self, call_options: Optional[FlightSQLCallOptions] = None):
-        return self.get_flight_info(flightsql.CommandGetTableTypes(), call_options)
+        """
+        Requests a list of table types and returns a `flight.FlightInfo`
+        object to specify the retrieval location for Arrow data.
+        """
+        return self._get_flight_info(flightsql.CommandGetTableTypes(), call_options)
 
     def get_sql_info(self, info: List[int], call_options: Optional[FlightSQLCallOptions] = None):
-        return self.get_flight_info(flightsql.CommandGetSqlInfo(info=info), call_options)
+        """
+        Requests a list of information about the upstream server's capabilities
+        and returns a `flight.FlightInfo` object to specify the retrieval
+        location for Arrow data.
+        """
+        return self._get_flight_info(flightsql.CommandGetSqlInfo(info=info), call_options)
 
     @check_closed
     def do_get(self, ticket, call_options: Optional[FlightSQLCallOptions] = None):
-        options = self.flight_call_options(call_options)
+        """
+        Uses a Flight ticket to request a stream of Arrow data. A
+        `flight.FlightStreamReader` is returned to stream the results.
+        """
+        options = self._flight_call_options(call_options)
         return self.client.do_get(ticket, options)
 
     @check_closed
-    def do_put(self, desc, call_options: Optional[FlightSQLCallOptions] = None):
-        options = self.flight_call_options(call_options)
+    def _do_put(self, desc, call_options: Optional[FlightSQLCallOptions] = None):
+        options = self._flight_call_options(call_options)
         return self.client.do_put(desc, pa.Table.from_arrays([]).schema, options)
 
     @check_closed
-    def get_flight_info(self, command, call_options: Optional[FlightSQLCallOptions] = None):
-        options = self.flight_call_options(call_options)
+    def _get_flight_info(self, command, call_options: Optional[FlightSQLCallOptions] = None):
+        options = self._flight_call_options(call_options)
         return self.client.get_flight_info(flight_descriptor(command), options)
 
-    def flight_call_options(self, call_options: Optional[FlightSQLCallOptions] = None):
+    def _flight_call_options(self, call_options: Optional[FlightSQLCallOptions] = None):
         headers = self.headers
         timeout = None
         read_options = None

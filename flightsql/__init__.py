@@ -1,4 +1,4 @@
-from flightsql.client import FlightSQLCallOptions, FlightSQLClient
+from flightsql.client import FlightSQLCallOptions, FlightSQLClient, TableRef
 from flightsql.dbapi import apilevel, connect, paramstyle
 from flightsql.exceptions import (
     DatabaseError,
@@ -31,4 +31,5 @@ __all__ = [
     "Warning",
     "FlightSQLClient",
     "FlightSQLCallOptions",
+    "TableRef",
 ]
