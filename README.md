@@ -18,7 +18,7 @@ layer and for metadata discovery.
 ## Installation
 
 ```shell
-$ pip3 install flightsql-dbapi
+$ pip install flightsql-dbapi
 ```
 
 ## Usage
