@@ -1,4 +1,5 @@
 import importlib.metadata
+
 from flightsql.client import FlightSQLClient
 from flightsql.dbapi import apilevel, connect, paramstyle
 from flightsql.exceptions import (
