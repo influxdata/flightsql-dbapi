@@ -60,7 +60,7 @@ metadata.reflect(bind=engine)
 print("tables:", [table for table in metadata.sorted_tables])
 ```
 
-### Custom Dialects
+#### Custom Dialects
 
 If your database of choice can't make use of the Dialects provided by this
 library directly, you can extend `flightsql.sqlalchemy.FlightSQLDialect` as a
