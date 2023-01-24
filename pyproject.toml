@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/brettbuddin/flightsql-dbapi"
+"Homepage" = "https://github.com/influxdata/flightsql-dbapi"
 
 [project.entry-points."sqlalchemy.dialects"]
 datafusion = "flightsql.sqlalchemy:DataFusionDialect"
