@@ -10,8 +10,8 @@ def is_disabled():
 
 
 def host_port():
-    host = os.getenv("FLIGHTSQL_SERVER_HOST") or "127.0.0.1"
-    port = os.getenv("FLIGHTSQL_SERVER_PORT") or 3000
+    host = os.getenv("FLIGHTSQL_SERVER_HOST", default="127.0.0.1")
+    port = int(os.getenv("FLIGHTSQL_SERVER_PORT", default=3000))
     return host, port
 
 
