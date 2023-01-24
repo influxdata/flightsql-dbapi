@@ -11,6 +11,7 @@ from flightsql.client import FlightSQLClient
 feature_prefix = "feature-"
 
 FEATURE_PREPARED_STATEMENTS = "sqlalchemy-prepared-statements"
+FEATURE_PRIMARY_KEYS = "sqlalchemy-primary-keys"
 
 
 def client_from_url(url: URL) -> FlightSQLClient:
@@ -101,7 +102,12 @@ class FlightSQLDialect(default.DefaultDialect):
         return []
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kwargs):
-        columns = connection.connection.flightsql_get_primary_keys(table_name, schema=schema)
+        conn = connection.connection
+        primary_keys_enabled = conn.features.get(FEATURE_PRIMARY_KEYS)
+        if primary_keys_enabled != "on":
+            return []
+
+        columns = conn.flightsql_get_primary_keys(table_name, schema=schema)
         if len(columns) == 0:
             return {"constrained_columns": [], "name": None}
         names = [v["column_name"] for v in columns]
