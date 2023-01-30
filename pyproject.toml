@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "flightsql-dbapi"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
   { name="Brett Buddin", email="brett@buddin.org" },
 ]
@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "sqlalchemy<2.0",
-    "pyarrow>=5.0.0",
+    "pyarrow>=10.0.0",
     "protobuf>=4.21.0"
 ]
 
