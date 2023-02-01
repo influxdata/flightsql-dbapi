@@ -28,7 +28,7 @@ $ pip install flightsql-dbapi
 ```python3
 from flightsql import connect, FlightSQLClient
 
-client = FlightSQLCLient(host='upstream.server.dev')
+client = FlightSQLClient(host='upstream.server.dev')
 conn = connect(client)
 cursor = conn.cursor()
 cursor.execute('select * from runs limit 10')
