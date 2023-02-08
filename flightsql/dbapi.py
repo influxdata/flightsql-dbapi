@@ -47,6 +47,7 @@ class Cursor:
 
     @check_closed
     def execute(self, query: str, params: Optional[ExecuteParams] = None) -> "Cursor":
+        print("EXECUTE", query, params)
         self.description = None
         self._results = []
 
