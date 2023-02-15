@@ -1,7 +1,7 @@
 ## Dev instructions
 
 ## Pre-requisites 
-- Python version 3 or greater
+- Python version 3.11.x or greater
 - Clone superset: https://github.com/apache/superset
 
 ## Superset Directory
