@@ -141,7 +141,8 @@ class Connection:
     def close(self) -> None:
         self.closed = True
         for cursor in self.cursors:
-            cursor.close()
+            if not cursor.closed:
+                cursor.close()
 
     @check_closed
     def cursor(self) -> Cursor:

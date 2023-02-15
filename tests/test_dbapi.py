@@ -76,5 +76,5 @@ def test_resolve_sql_type():
         (pa.bool_(), sqltypes.BOOLEAN),
         (pa.binary(), sqltypes.BINARY),
     ]
-    for (actual, expected) in cases:
+    for actual, expected in cases:
         assert resolve_sql_type(actual) == expected
