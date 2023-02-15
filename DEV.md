@@ -59,15 +59,3 @@ layout python3
 If you make changes to your .envrc it should ask you to accept the changes ie:
 
 `direnv allow .`
-
-
-
-
-
-
-
-
-
-
-
-
