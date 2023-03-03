@@ -5,7 +5,7 @@ provides could change at any time so use at your own risk.
 
 This library provides a [DB API 2](https://peps.python.org/pep-0249/) interface
 and [SQLAlchemy](https://www.sqlalchemy.org) Dialect for [Flight
-SQL](https://arrow.apache.org/docs/format/FlightSql.html).
+SQL](https://arrow.apache.org/docs/format/FlightSql.html) for example to interact with InfluxDB IOx in our Cloud product.
 
 Initially, this library aims to ease the process of connecting to Flight SQL
 APIs in [Apache Superset](https://superset.apache.org).
