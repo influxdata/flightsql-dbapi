@@ -47,7 +47,7 @@ from sqlalchemy.schema import MetaData, Table
 engine = create_engine("datafusion+flightsql://john:appleseeds@upstream.server.dev:443")
 runs = Table("runs", MetaData(bind=engine), autoload=True)
 count = select([func.count("*")], from_obj=runs).scalar()
-print("runs count:" count)
+print("runs count:", count)
 print("columns:", [(r.name, r.type) for r in runs.columns])
 
 # Reflection
