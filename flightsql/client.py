@@ -336,7 +336,7 @@ def create_flight_client(
     if insecure:
         protocol = "tcp"
     elif disable_server_verification:
-        client_args["disable_server_verification"] = True
+        flight_client_kwargs["disable_server_verification"] = True
 
     url = f"grpc+{protocol}://{host}:{port}"
     client = flight.FlightClient(url, **flight_client_kwargs)
