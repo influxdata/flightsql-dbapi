@@ -1,5 +1,8 @@
-:warning: This library is experimental and under active development. The APIs it
-provides could change at any time so use at your own risk.
+:warning: This library is experimental.  Further development may be spotty since
+[influxdb3-python](https://github.com/InfluxCommunity/influxdb3-python) module is the
+[recommended Python API](https://docs.influxdata.com/influxdb/cloud-serverless/reference/client-libraries/v3/python/).
+
+The APIs provided here may change and functionality may not be maintained.  Use at your own risk.
 
 ## Overview
 
