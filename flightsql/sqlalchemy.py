@@ -95,8 +95,8 @@ class FlightSQLDialect(default.DefaultDialect):
         return connection.connection.flightsql_get_schema_names()
 
     @reflection.cache
-    def has_table(self, connection, table, schema=None, **kwargs):
-        return table in self.get_table_names(connection, schema)
+    def has_table(self, connection, table_name, schema=None, **kwargs):
+        return table_name in self.get_table_names(connection, schema)
 
     def get_indexes(self, connection, table_name, schema, **kwargs):
         return []
