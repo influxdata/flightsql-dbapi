@@ -104,6 +104,12 @@ class FlightSQLClient:
     """
 
     def __init__(self, *args, features: Optional[Dict[str, str]] = None, **kwargs):
+        """Initializes the client with the following parameters (see create_flight_client()):
+
+        host, port, user, password, token, insecure, disable_server_verification, metadata, features
+
+        Additional keyword arguments are passed on as keyword arguments to flight.FlightClient
+        """
         client, headers = create_flight_client(*args, **kwargs)
         self.client = client
         self.headers = headers
@@ -324,17 +330,16 @@ def create_flight_client(
     insecure: Optional[bool] = None,
     disable_server_verification: Optional[bool] = None,
     metadata: Optional[Dict[str, str]] = None,
-    **kwargs: Any,
+    **flight_client_kwargs: Any,
 ) -> Tuple[flight.FlightClient, List[Tuple[bytes, bytes]]]:
     protocol = "tls"
-    client_args = {}
     if insecure:
         protocol = "tcp"
     elif disable_server_verification:
-        client_args["disable_server_verification"] = True
+        flight_client_kwargs["disable_server_verification"] = True
 
     url = f"grpc+{protocol}://{host}:{port}"
-    client = flight.FlightClient(url, **client_args)
+    client = flight.FlightClient(url, **flight_client_kwargs)
 
     headers = []
     if user or password:
