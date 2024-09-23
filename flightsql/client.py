@@ -76,7 +76,7 @@ class PreparedStatement:
         desc = flight_descriptor(cmd)
 
         if binding is not None and binding.num_rows > 0:
-            writer, reader = self.client.do_put(desc, binding.schema)
+            writer, reader = self.client.do_put(desc, binding.schema, self.options)
             writer.write(binding)
             writer.done_writing()
             reader.read()
