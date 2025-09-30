@@ -1,6 +1,8 @@
 :warning: This library is experimental.  Further development may be spotty since
 [influxdb3-python](https://github.com/InfluxCommunity/influxdb3-python) module is the
 [recommended Python API](https://docs.influxdata.com/influxdb/cloud-serverless/reference/client-libraries/v3/python/).
+Note that this project should continue to work as a driver between an Influxdata database and third party platforms
+supporting DB API 2 and SQLAlchemy like Apache Superset.
 
 The APIs provided here may change and functionality may not be maintained.  Use at your own risk.
 
